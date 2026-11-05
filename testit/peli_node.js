@@ -4,7 +4,7 @@ const D = path.join(__dirname, "..") + "/";
 module.exports = function lataa(muisti) {
   const kuuntelijat = {};
   const ctxStub = new Proxy({}, { get: (t, k) => (k in t ? t[k] : () => ({ addColorStop() {} })), set: (t, k, v) => ((t[k] = v), true) });
-  const canvasStub = () => ({ width: 800, height: 450, getContext: () => ctxStub });
+  const canvasStub = () => ({ width: 800, height: 450, getContext: () => ctxStub, addEventListener() {} });
   const g = {
     console, Math, structuredClone, performance: { now: () => 0 },
     document: { getElementById: canvasStub, createElement: canvasStub, addEventListener() {} },

@@ -26,16 +26,40 @@ function koitaKokoRuutua() {
     .catch(() => {}); // jos ei onnistu, ei haittaa
 }
 
-// Ruudun napautus: sama kuin välilyönti (aloittaa, jatkaa, valitsee kentän)
-function napautaRuutua() {
+// Ruudun napautus. Valikoissa napautetaan riviä (peli.js: osoitaRuutua),
+// muualla napautus on sama kuin välilyönti (jatkaa, valitsee kentän).
+function napautaRuutua(sormi) {
   if (tila === "peli") return; // kesken pelin napautus ei tee mitään
+  if (tila === "alku" || tila === "tauko" || tila === "ohjeet") {
+    osoitaRuutua(sormi.clientX, sormi.clientY, true);
+    return;
+  }
   const koodi = tila === "havio" || tila === "voitto" ? "KeyR" : "Enter";
   painaNappia(koodi, true);
   painaNappia(koodi, false);
 }
 
+// Nappien koko: 🔍-nappi vaihtaa kokoa, ja valinta muistetaan
+const NAPPIKOOT = [1, 1.2, 1.4, 0.85]; // normaali, iso, tosi iso, pieni
+let nappikoko = 0; // monesko koko listasta on käytössä
+
+function asetaNappikoko(numero) {
+  nappikoko = numero % NAPPIKOOT.length;
+  document.documentElement.style.setProperty("--koko", NAPPIKOOT[nappikoko]);
+  try {
+    localStorage.setItem("ukonSeikkailuNappikoko", String(nappikoko));
+  } catch (virhe) {
+    // ei haittaa, koko vain ei tallennu
+  }
+}
+
 if (kosketusOhjaus) {
   document.body.classList.add("kosketus");
+  try {
+    asetaNappikoko(Number(localStorage.getItem("ukonSeikkailuNappikoko")) || 0);
+  } catch (virhe) {
+    asetaNappikoko(0);
+  }
   const napit = document.querySelectorAll("[data-nappi]");
   let pohjassa = new Set(); // napit, joiden päällä on nyt sormi
 
@@ -61,7 +85,8 @@ if (kosketusOhjaus) {
       kaynnistaAanet();
       koitaKokoRuutua();
       for (const sormi of e.changedTouches) {
-        if (sormi.target.id === "peli") napautaRuutua();
+        if (sormi.target.id === "peli") napautaRuutua(sormi);
+        if (sormi.target.id === "kokonappi") asetaNappikoko(nappikoko + 1);
       }
       paivitaSormet(e);
     },

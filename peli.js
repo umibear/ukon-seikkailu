@@ -221,24 +221,25 @@ addEventListener("keydown", (e) => {
   // uudestaan, eli nappia pitää painaa joka kerta erikseen.
   if (!e.repeat) {
     const tilaEnnen = tila; // muistetaan, ettei kentän aloitus Enterillä ammu heti
-    // Alkuruudussa valitaan ← → yksin- tai kaksinpeli ja ↑ ↓ jatka tai uusi peli.
-    // Kännykällä pelataan aina yksin, joten siellä ◀ ▶ valitsee jatka tai uusi peli.
-    if (tila === "alku") {
-      const sivulle = ["ArrowLeft", "ArrowRight", "KeyA", "KeyD"].includes(e.code);
-      const ylosAlas = ["ArrowUp", "ArrowDown", "KeyW", "KeyS"].includes(e.code);
-      if (sivulle && !kosketusOhjaus) {
-        kaksinpeli = !kaksinpeli;
-        aanet.laskuri();
-      } else if (tallennus && (ylosAlas || (sivulle && kosketusOhjaus))) {
-        alkuValinta = alkuValinta === "jatka" ? "uusi" : "jatka";
-        uusiVahvistus = false;
-        aanet.laskuri();
-      }
-    }
+    const hyvaksy = e.code === "Space" || e.code === "Enter";
 
-    if (e.code === "Space" || e.code === "Enter") {
-      if (tila === "alku") valitseAlkuruudusta();
-      else if (tila === "kartta") valitseKartalta();
+    // Valikoissa (alkuruutu ja tauko) liikutaan ↑ ↓ ja valitaan Enterillä tai välilyönnillä.
+    // Kännykässä myös ◀ ▶ liikuttaa valintaa.
+    if (tila === "alku" || tila === "tauko") {
+      const ylos = ["ArrowUp", "KeyW"].includes(e.code);
+      const alas = ["ArrowDown", "KeyS"].includes(e.code);
+      const sivulle = ["ArrowLeft", "ArrowRight", "KeyA", "KeyD"].includes(e.code);
+      const oikealle = e.code === "ArrowRight" || e.code === "KeyD";
+      if (ylos) siirraValintaa(-1);
+      else if (alas) siirraValintaa(1);
+      else if (sivulle && valittuRivi().id === "pelaajat") valitseRivi("pelaajat");
+      else if (sivulle && kosketusOhjaus) siirraValintaa(oikealle ? 1 : -1);
+      else if (hyvaksy) valitseRivi(valittuRivi().id);
+      else if (e.code === "Escape" && tila === "tauko") jatkaTauolta();
+    } else if (tila === "ohjeet") {
+      if (hyvaksy || e.code === "Escape") suljeOhjeet();
+    } else if (hyvaksy) {
+      if (tila === "kartta") valitseKartalta();
       else if (tila === "kenttaValmis") seuraavaKentta();
     }
 
@@ -261,8 +262,9 @@ addEventListener("keydown", (e) => {
       if (tila === "havio") aloitaMaailmaAlusta();
       if (tila === "voitto") aloitaPeli();
     }
-    // Esc: kesken kentän palataan kartalle
-    if (e.code === "Escape" && tila === "peli") avaaKartta();
+    // Esc: kesken kentän peli pysähtyy (taukovalikko), kartalta palataan alkuruutuun
+    if (e.code === "Escape" && tilaEnnen === "peli") avaaTauko();
+    if (e.code === "Escape" && tilaEnnen === "kartta") poistuPelista();
 
     // Testitila: numeronäppäin 1, 2, 3... hyppää suoraan siihen kenttään.
     // Shift + numero = maailman 2 kenttä (esim. Shift + 1 = kenttä 6)
@@ -445,7 +447,6 @@ function lataaEnnatys() {
 // selaimen muistiin aina, kun palataan kartalle.
 const TALLENNUKSEN_NIMI = "ukonSeikkailuTallennus";
 let tallennus = lataaTallennus(); // null = ei tallennettua peliä
-let alkuValinta = "jatka"; // alkuruudun valinta: "jatka" tai "uusi"
 let uusiVahvistus = false; // true = "Uusi peli" painettiin kerran, odotetaan vahvistusta
 let testiPeli = false; // testitilassa aloitettua peliä ei tallenneta
 const ALUSTA_VAHVISTUS_AIKA = 150; // kuinka kauan on aikaa painaa R toisen kerran (60 = 1 s)
@@ -494,19 +495,167 @@ function jatkaPelia() {
   avaaKartta();
 }
 
-// Välilyönti tai napautus alkuruudussa
-function valitseAlkuruudusta() {
-  testiPeli = false;
-  if (!tallennus) return aloitaPeli();
-  if (alkuValinta === "jatka") return jatkaPelia();
-  if (!uusiVahvistus) {
-    uusiVahvistus = true; // pitää painaa vielä kerran, ettei tallennus häviä vahingossa
-    aanet.tyhja();
+// ---------- VALIKOT ----------
+// Alkuruudussa ja taukoruudussa on valikko. Jokaisella rivillä on
+// tunnus (id), teksti ja ehkä lisäteksti oikeassa reunassa.
+let valikonValinta = 0; // monesko rivi on valittuna (0 = ylin)
+
+function valikonRivit() {
+  if (tila === "tauko") {
+    return [
+      { id: "jatkaTaukoa", teksti: "Jatka peliä" },
+      { id: "kartalle", teksti: "Palaa kartalle" },
+      { id: "poistu", teksti: "Poistu pelistä" },
+    ];
+  }
+  const rivit = [];
+  if (tallennus) {
+    const kohta = Math.min(tallennus.avattu, KENTAT.length - 1);
+    const lisa = "maailma " + (maailmanNumero(kohta) + 1) + ", kenttä " + (kohta + 1);
+    rivit.push({ id: "jatka", teksti: "Jatka peliä", lisa: lisa });
+  }
+  if (!tallennus) rivit.push({ id: "uusi", teksti: "Aloita peli" });
+  else if (uusiVahvistus) rivit.push({ id: "uusi", teksti: "Varmasti?", lisa: "paina uudestaan", vari: "#ff8080" });
+  else rivit.push({ id: "uusi", teksti: "Uusi peli" });
+  // Kännykällä pelataan aina yksin
+  if (!kosketusOhjaus) rivit.push({ id: "pelaajat", teksti: "Pelaajat", lisa: "◀  " + (kaksinpeli ? 2 : 1) + "  ▶" });
+  rivit.push({ id: "ohjeet", teksti: "Ohjeet" });
+  return rivit;
+}
+
+function valittuRivi() {
+  const rivit = valikonRivit();
+  valikonValinta = Math.max(0, Math.min(valikonValinta, rivit.length - 1));
+  return rivit[valikonValinta];
+}
+
+// Siirtää valintaa ylös (-1) tai alas (1). Ylimmästä pääsee alimpaan ja toisin päin.
+function siirraValintaa(suunta) {
+  const maara = valikonRivit().length;
+  asetaValinta((valikonValinta + suunta + maara) % maara);
+  aanet.laskuri();
+}
+
+function asetaValinta(numero) {
+  if (numero !== valikonValinta) uusiVahvistus = false; // vahvistus peruuntuu, kun valinta vaihtuu
+  valikonValinta = numero;
+}
+
+// Tehdään se, mitä valitulla rivillä lukee
+function valitseRivi(id) {
+  if (id === "jatka") {
+    testiPeli = false;
+    jatkaPelia();
+  } else if (id === "uusi") {
+    if (tallennus && !uusiVahvistus) {
+      uusiVahvistus = true; // pitää painaa vielä kerran, ettei tallennus häviä vahingossa
+      aanet.tyhja();
+      return;
+    }
+    uusiVahvistus = false;
+    testiPeli = false;
+    aloitaPeli(); // vanha tallennus korvautuu uudella pelillä
+  } else if (id === "pelaajat") {
+    kaksinpeli = !kaksinpeli;
+    aanet.laskuri();
+  } else if (id === "ohjeet") {
+    tila = "ohjeet";
+    aanet.laskuri();
+  } else if (id === "jatkaTaukoa") {
+    jatkaTauolta();
+  } else if (id === "kartalle") {
+    avaaKartta();
+  } else if (id === "poistu") {
+    poistuPelista();
+  }
+}
+
+function suljeOhjeet() {
+  tila = "alku";
+  valikonValinta = valikonRivit().findIndex((r) => r.id === "ohjeet");
+  aanet.laskuri();
+}
+
+// Esc kesken kentän: peli pysähtyy
+function avaaTauko() {
+  tila = "tauko";
+  valikonValinta = 0;
+  aanet.laskuri();
+}
+
+function jatkaTauolta() {
+  tila = "peli";
+  // Jos tauolta palataan välilyönnillä, ukko ei saa hypätä heti.
+  // Odotetaan, että napit nostetaan (sama kuin kuoleman jälkeen).
+  for (const pl of pelaajat) pl.odotaNostoa = true;
+}
+
+// Takaisin alkuruutuun. Eteneminen tallennetaan, joten "Jatka peliä" toimii.
+function poistuPelista() {
+  tallennaPeli();
+  tila = "alku";
+  valikonValinta = 0;
+  uusiVahvistus = false;
+  tulipallot = [];
+  aloitaSiirtyma();
+}
+
+// Hiiri tai sormi osoittaa ruutua kohdassa (ruutuX, ruutuY) selaimen koordinaateissa.
+// valitse = true: klikkaus tai napautus, false: hiiri vain liikkuu päällä.
+function osoitaRuutua(ruutuX, ruutuY, valitse) {
+  const kohta = pelinKohta(ruutuX, ruutuY);
+  if (tila === "ohjeet") {
+    if (valitse) suljeOhjeet();
     return;
   }
-  uusiVahvistus = false;
-  alkuValinta = "jatka";
-  aloitaPeli(); // vanha tallennus korvautuu uudella pelillä
+  if (tila !== "alku" && tila !== "tauko") return;
+  const asettelu = valikonAsettelu();
+  const numero = asettelu.rivit.findIndex((r) => osuu({ x: kohta.x, y: kohta.y, leveys: 1, korkeus: 1 }, r));
+  if (numero < 0) return;
+  asetaValinta(numero);
+  if (valitse) valitseRivi(asettelu.rivit[numero].id);
+}
+
+// Muuttaa selaimen koordinaatit pelin koordinaateiksi (800 x 450).
+// Kännykässä peli on venytetty koko ruudulle, joten pitää laskea mittakaava.
+function pelinKohta(ruutuX, ruutuY) {
+  const laatikko = canvas.getBoundingClientRect();
+  const reuna = parseFloat(getComputedStyle(canvas).borderLeftWidth) || 0;
+  const leveys = laatikko.width - 2 * reuna;
+  const korkeus = laatikko.height - 2 * reuna;
+  const mittakaava = Math.min(leveys / canvas.width, korkeus / canvas.height);
+  const vasen = laatikko.left + reuna + (leveys - canvas.width * mittakaava) / 2;
+  const yla = laatikko.top + reuna + (korkeus - canvas.height * mittakaava) / 2;
+  return { x: (ruutuX - vasen) / mittakaava, y: (ruutuY - yla) / mittakaava };
+}
+
+// Tietokoneella valikkoa voi käyttää myös hiirellä
+canvas.addEventListener("click", (e) => {
+  if (kosketusOhjaus) return; // kännykässä napautukset hoitaa kosketus.js
+  kaynnistaAanet();
+  osoitaRuutua(e.clientX, e.clientY, true);
+});
+canvas.addEventListener("mousemove", (e) => {
+  if (!kosketusOhjaus) osoitaRuutua(e.clientX, e.clientY, false);
+});
+
+// Missä kohtaa ruutua valikko ja sen rivit ovat
+const RIVIN_KORKEUS = 48;
+const VALIKON_LEVEYS = 400;
+function valikonAsettelu() {
+  const rivit = valikonRivit();
+  const otsikko = tila === "tauko" ? 64 : 0; // taukovalikossa on otsikko "TAUKO"
+  const korkeus = otsikko + rivit.length * RIVIN_KORKEUS + 16;
+  const keskiY = tila === "tauko" ? 210 : 302;
+  const x = (canvas.width - VALIKON_LEVEYS) / 2;
+  const y = Math.round(keskiY - korkeus / 2);
+  rivit.forEach((rivi, i) => {
+    rivi.x = x + 12;
+    rivi.y = y + 8 + otsikko + i * RIVIN_KORKEUS + 3;
+    rivi.leveys = VALIKON_LEVEYS - 24;
+    rivi.korkeus = RIVIN_KORKEUS - 6;
+  });
+  return { x: x, y: y, leveys: VALIKON_LEVEYS, korkeus: korkeus, otsikko: otsikko, rivit: rivit };
 }
 
 function tarkistaEnnatys() {
@@ -1508,6 +1657,7 @@ function piirraRuutu(kuva, ruutu, ruudunLeveys, ruudunKorkeus, x, y, peilaa) {
 function paivita(dt) {
   // Nämä liikkuvat aina, vaikka peli olisi pysähdyksissä
   paivitaTehosteet(dt);
+  if (tila === "tauko") return; // tauolla kaikki on pysähdyksissä
   if (alustaVahvistus > 0) alustaVahvistus -= dt;
   for (const p of pilvet) p.x += p.nopeus * dt;
   paivitaHiukkaset(dt);
@@ -2868,104 +3018,163 @@ function piirraAloitusruutu(aika) {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   // Pelin nimi, joka keinuu vähän
-  const keinunta = Math.sin(aika / 400) * 5;
-  reunaTeksti(PELIN_NIMI, canvas.width / 2, 100 + keinunta, 60, "center");
+  const keinunta = Math.sin(aika / 400) * 4;
+  reunaTeksti(PELIN_NIMI, canvas.width / 2, 62 + keinunta, 54, "center");
 
-  // Ukko keskellä ja vihut sen molemmin puolin, isoina
+  // Ukko seisoo valikon päällä. Kaksinpelissä näkyy kaksi ukkoa: vihreä ja sininen.
   const ruutu = Math.floor(aika / 200) % 2;
-  // Kaksinpelissä näkyy kaksi ukkoa: vihreä ja sininen
+  const valikonYla = valikonAsettelu().y;
   const ukot = kaksinpeli ? [kuvat.ukko, kuvat.ukko2] : [kuvat.ukko];
   for (let i = 0; i < ukot.length; i++) {
-    const siirto = kaksinpeli ? (i === 0 ? -55 : 55) : 0;
+    const siirto = kaksinpeli ? (i === 0 ? -50 : 50) : 0;
     ctx.save();
-    ctx.translate(canvas.width / 2 - 64 + siirto, 120);
+    ctx.translate(canvas.width / 2 - 32 + siirto, valikonYla - 116);
     ctx.scale(2, 2);
     piirraRuutu(ukot[i], ruutu, 32, 32, 0, 0, i === 0);
     ctx.restore();
   }
-  piirraRuutu(kuvat.vihu, ruutu, 32, 32, 180, 170, false);
-  piirraRuutu(kuvat.lentovihu, ruutu, 32, 32, 560, 150 + keinunta * 2, false);
+  // Vihut valikon molemmin puolin
+  piirraRuutu(kuvat.vihu, ruutu, 32, 32, 110, 378, false);
+  piirraRuutu(kuvat.lentovihu, ruutu, 32, 32, 655, 230 + keinunta * 3, false);
 
   // Ennätys, jos sellainen on jo tehty
   if (ennatys > 0) {
-    reunaTeksti(
-      "Ennätys: " + ennatys,
-      canvas.width / 2,
-      255,
-      22,
-      "center",
-      "gold",
-    );
+    reunaTeksti("Ennätys: " + ennatys, canvas.width - 14, 30, 20, "right", "gold");
   }
 
-  // Pelaajien määrä: vaihdetaan nuolinäppäimillä
-  const valinta = kaksinpeli ? "2 PELAAJAA" : "1 PELAAJA";
-  const valintaY = tallennus ? 282 : 288;
-  if (!kosketusOhjaus) reunaTeksti("◀  " + valinta + "  ▶", canvas.width / 2, valintaY, 24, "center", "gold");
+  piirraValikko(aika);
 
-  // Jos peli on tallennettu: valitaan "Jatka" tai "Uusi peli"
-  if (tallennus) {
-    const kohta = Math.min(tallennus.avattu, KENTAT.length - 1);
-    const jatka = "JATKA (maailma " + (maailmanNumero(kohta) + 1) + ", kenttä " + (kohta + 1) + ")";
-    const uusi = uusiVahvistus ? "UUSI PELI? Paina uudestaan: tallennus poistuu!" : "UUSI PELI";
-    const vilkkuu = Math.floor(aika / 400) % 2 === 0;
-    const rivi = (teksti, valittu, y) => {
-      const nuoli = valittu && vilkkuu ? "▶ " : "   ";
-      const vari = valittu ? (uusiVahvistus ? "#ff8080" : "gold") : "#ccc";
-      reunaTeksti(nuoli + teksti, canvas.width / 2, y, valittu ? 22 : 18, "center", vari);
-    };
-    rivi(jatka, alkuValinta === "jatka", 314);
-    rivi(uusi, alkuValinta === "uusi", 342);
-  }
-
-  // Vilkkuva ohje (jos tallennusta ei ole)
-  if (!tallennus && Math.floor(aika / 500) % 2 === 0) {
-    reunaTeksti(
-      ohje("Paina VÄLILYÖNTIÄ aloittaaksesi", "Napauta ruutua aloittaaksesi"),
-      canvas.width / 2,
-      322,
-      24,
-      "center",
-    );
-  }
-
-  // Ohjeet
-  let ohjeet;
-  if (kaksinpeli) {
-    ohjeet = [
-      "Pelaaja 1 (vihreä): liiku A D, hyppää W, tulipallo F",
-      "Pelaaja 2 (sininen): liiku ← →, hyppää ↑, tulipallo L tai Enter",
-      "Sydän herättää haamukaverin!   Äänet: M   Maailma alusta: R   Kartalle: Esc",
-    ];
-  } else if (kosketusOhjaus) {
-    ohjeet = [
-      "Liiku: ◀ ▶   Hyppää: ⬆ (pidä pohjassa = korkeampi hyppy)",
-      "Tulipallo: 🔥   Kartalle: ☰   Maailma alusta: ↻   Äänet: 🔊",
-      "Hyppää vihujen päälle tai ammu ne tulipallolla!",
-    ];
-  } else {
-    ohjeet = [
-      "Liiku: ← →   Hyppää: ↑ / välilyönti (pidä pohjassa = korkeampi hyppy)",
-      "Tulipallo: X   Äänet: M   Maailma alusta: R   Kartalle: Esc",
-      "Hyppää vihujen päälle tai ammu ne tulipallolla!",
-    ];
-  }
-  if (tallennus) {
-    // Valikko vie tilaa, joten näytetään valintaohje ja kaksi ohjeriviä
-    const valintaOhje = ohje("↑ ↓ valitse   VÄLILYÖNTI aloittaa", "◀ ▶ valitse   napauta ruutua aloittaaksesi");
-    ohjeet = [valintaOhje, ohjeet[0], ohjeet[1]];
-  }
-  for (let i = 0; i < ohjeet.length; i++) {
-    const y = tallennus ? 370 + i * 22 : 355 + i * 24;
-    reunaTeksti(ohjeet[i], canvas.width / 2, y, 16, "center");
-  }
+  // Yksi lyhyt ohjerivi valikon alla
+  let vihje = ohje("↑ ↓ valitse     Enter tai välilyönti hyväksyy", "Napauta valintaa");
+  if (uusiVahvistus) vihje = "Uusi peli poistaa vanhan tallennuksen!";
+  reunaTeksti(vihje, canvas.width / 2, 437, 16, "center", uusiVahvistus ? "#ff8080" : "white");
 
   if (TESTITILA && !kosketusOhjaus) {
     const m1 = MAAILMAT[0].loppu - MAAILMAT[0].alku + 1;
     const m2 = MAAILMAT[1].loppu - MAAILMAT[1].alku + 1;
-    const teksti = "TESTI: maailma 1 = napit 1-" + m1 + ",  maailma 2 = Shift + 1-" + m2;
-    reunaTeksti(teksti, canvas.width / 2, 435, 16, "center", "gold");
+    const teksti = "TESTI: maailma 1 = napit 1-" + m1 + ", maailma 2 = Shift + 1-" + m2;
+    reunaTeksti(teksti, 8, 18, 12, "left", "gold");
   }
+}
+
+// Pyöreäkulmainen laatikko (kulma = kulman pyöreys)
+function pyoreaLaatikko(x, y, leveys, korkeus, kulma) {
+  ctx.beginPath();
+  ctx.moveTo(x + kulma, y);
+  ctx.arcTo(x + leveys, y, x + leveys, y + korkeus, kulma);
+  ctx.arcTo(x + leveys, y + korkeus, x, y + korkeus, kulma);
+  ctx.arcTo(x, y + korkeus, x, y, kulma);
+  ctx.arcTo(x, y, x + leveys, y, kulma);
+  ctx.closePath();
+}
+
+// Piirtää valikon (alkuruutu tai tauko): tumma laatikko ja rivit allekkain.
+// Valittu rivi on kultainen ja sen ympärillä on kehys.
+function piirraValikko(aika) {
+  const v = valikonAsettelu();
+  ctx.fillStyle = "rgba(10, 20, 40, 0.75)";
+  pyoreaLaatikko(v.x, v.y, v.leveys, v.korkeus, 16);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  if (v.otsikko) reunaTeksti("TAUKO", canvas.width / 2, v.y + 48, 34, "center", "gold");
+
+  const valittu = valittuRivi();
+  const sykkii = 0.5 + Math.sin(aika / 200) * 0.25; // kehys sykkii vähän
+  for (const rivi of v.rivit) {
+    const onValittu = rivi.id === valittu.id;
+    const keskiY = rivi.y + rivi.korkeus / 2 + 8; // tekstin pohjaviiva
+    if (onValittu) {
+      ctx.fillStyle = "rgba(255, 215, 0, 0.18)";
+      pyoreaLaatikko(rivi.x, rivi.y, rivi.leveys, rivi.korkeus, 10);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255, 215, 0, " + (0.6 + sykkii * 0.4) + ")";
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    }
+    const vari = rivi.vari || (onValittu ? "gold" : "white");
+    if (onValittu) reunaTeksti("▶", rivi.x + 22, keskiY, 20, "center", vari);
+    reunaTeksti(rivi.teksti, rivi.x + 44, keskiY, 24, "left", vari);
+    if (rivi.lisa) reunaTeksti(rivi.lisa, rivi.x + rivi.leveys - 16, keskiY - 1, 17, "right", onValittu ? vari : "#ccc");
+  }
+}
+
+// Taukoruutu: peli näkyy tummennettuna taustalla
+function piirraTauko(aika) {
+  ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  piirraValikko(aika);
+  const vihje = ohje("↑ ↓ valitse     Enter hyväksyy     Esc jatkaa", "Napauta valintaa");
+  reunaTeksti(vihje, canvas.width / 2, 360, 16, "center");
+}
+
+// Ohjeruutu: napit selkeästi taulukkona (vasemmalla mitä tehdään, oikealla millä)
+function piirraOhjeet() {
+  ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  let rivit;
+  let vinkki = "Hyppää vihujen päälle tai ammu ne tulipallolla!";
+  if (kosketusOhjaus) {
+    rivit = [
+      ["Liiku", "◀  ▶"],
+      ["Hyppää", "⬆   (pidä pohjassa = korkeampi hyppy)"],
+      ["Tulipallo", "🔥"],
+      ["Tauko", "☰"],
+      ["Maailma alusta", "↻  kaksi kertaa"],
+      ["Äänet päälle / pois", "🔊"],
+      ["Nappien koko", "🔍"],
+    ];
+  } else if (kaksinpeli) {
+    rivit = [
+      ["", "Pelaaja 1", "Pelaaja 2"],
+      ["Liiku", "A  D", "←  →"],
+      ["Hyppää", "W", "↑"],
+      ["Tulipallo", "F", "L tai Enter"],
+      ["Tauko", "Esc"],
+      ["Maailma alusta", "R  kaksi kertaa"],
+      ["Äänet päälle / pois", "M"],
+    ];
+    vinkki = "Sydän herättää haamukaverin!";
+  } else {
+    rivit = [
+      ["Liiku", "←  →   tai   A  D"],
+      ["Hyppää", "↑   W   tai välilyönti"],
+      ["", "(pidä pohjassa = korkeampi hyppy)"],
+      ["Tulipallo", "X"],
+      ["Tauko", "Esc"],
+      ["Maailma alusta", "R  kaksi kertaa"],
+      ["Äänet päälle / pois", "M"],
+    ];
+  }
+
+  const x = 70;
+  const y = 30;
+  const leveys = canvas.width - 140;
+  const korkeus = 360;
+  ctx.fillStyle = "rgba(10, 20, 40, 0.8)";
+  pyoreaLaatikko(x, y, leveys, korkeus, 16);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  reunaTeksti("OHJEET", canvas.width / 2, y + 48, 34, "center", "gold");
+  const raja = 330; // tästä vasemmalle selitys, oikealle napit
+  for (let i = 0; i < rivit.length; i++) {
+    const rivinY = y + 100 + i * 34;
+    const [mita, milla, pelaaja2] = rivit[i];
+    const otsikkorivi = !mita && pelaaja2; // kaksinpelin "Pelaaja 1  Pelaaja 2"
+    if (mita) reunaTeksti(mita, raja - 16, rivinY, 19, "right", "#ffe27a");
+    reunaTeksti(milla, raja + 8, rivinY, 19, "left", otsikkorivi ? "#3ddc3d" : "white");
+    // Kaksinpelissä pelaaja 2:n napit ovat omassa sarakkeessaan
+    if (pelaaja2) reunaTeksti(pelaaja2, raja + 170, rivinY, 19, "left", otsikkorivi ? "#5aa0ff" : "white");
+  }
+  reunaTeksti(vinkki, canvas.width / 2, y + korkeus - 22, 18, "center", "#9fe39f");
+
+  reunaTeksti(ohje("Takaisin: Esc tai Enter", "Napauta palataksesi"), canvas.width / 2, 432, 16, "center");
 }
 
 function piirra(aika) {
@@ -2978,11 +3187,12 @@ function piirra(aika) {
     );
   }
 
-  if (tila === "alku") {
+  if (tila === "alku" || tila === "ohjeet") {
     // Aloitusruudun taustalla on vain taivas, mäet ja maa
     piirraTausta(aika);
     piirraTaso({ x: 0, y: 410, leveys: canvas.width, korkeus: 40 });
-    piirraAloitusruutu(aika);
+    if (tila === "alku") piirraAloitusruutu(aika);
+    else piirraOhjeet();
   } else if (tila === "kartta") {
     piirraKartta(aika);
   } else {
@@ -2991,6 +3201,8 @@ function piirra(aika) {
     piirraSaa();
     piirraTiedot();
   }
+
+  if (tila === "tauko") piirraTauko(aika);
 
   if (tila === "kenttaValmis") {
     tummenna();

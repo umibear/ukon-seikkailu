@@ -13,9 +13,9 @@ Toimii tietokoneella ja kännykän selaimessa.
 | Liiku | ← → tai A D | ◀ ▶ |
 | Hyppää (pidä pohjassa = korkeampi hyppy) | ↑, W tai välilyönti | ⬆ |
 | Tulipallo | X | 🔥 |
-| Kartalle / maailma alusta (paina 2 kertaa) / äänet | Esc / R / M | ☰ / ↻ / 🔊 |
+| Tauko / maailma alusta (paina 2 kertaa) / äänet | Esc / R / M | ☰ / ↻ / 🔊 |
 
-**Kaksinpeli** (tietokoneella): valitse alkuruudussa nuolilla 2 pelaajaa.
+**Kaksinpeli** (tietokoneella): valitse alkuvalikosta **Pelaajat: 2**.
 Pelaaja 1: A D W + F, pelaaja 2: ← → ↑ + L tai Enter.
 
 ## Koodi

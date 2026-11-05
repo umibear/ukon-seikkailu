@@ -48,31 +48,49 @@
     }
     body.kosketus #kosketusnapit { display: block; }
 
+    /* Nappien koot lasketaan ruudun koosta, joten ne ovat jokaisessa
+       puhelimessa yhtä isoja suhteessa ruutuun.
+       vmin = prosenttia ruudun lyhyemmästä sivusta (vaakatasossa korkeudesta),
+       vw = prosenttia ruudun leveydestä.
+       --koko muuttuu 🔍-napista (kosketus.js). */
+    :root {
+      --koko: 1;
+      --nappi: calc(clamp(56px, 18.5vmin, 140px) * var(--koko));
+      --iso: calc(clamp(66px, 22vmin, 165px) * var(--koko));
+      --pieni: clamp(34px, 10vmin, 72px); /* pienet napit eivät kasva 🔍:llä */
+      --pieniVali: 2vmin;
+      --vali: 3vmin;
+      --reuna: max(4vw, 20px);
+      --ala: max(5vmin, 14px);
+    }
     .nappi {
       position: fixed;
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 76px;
-      height: 76px;
+      width: var(--nappi);
+      height: var(--nappi);
       border-radius: 50%;
       background: rgba(255, 255, 255, 0.18);
       border: 3px solid rgba(255, 255, 255, 0.45);
       color: white;
-      font-size: 34px;
+      font-size: calc(var(--nappi) * 0.45);
       font-weight: bold;
     }
     .nappi.pohjassa { background: rgba(255, 210, 60, 0.5); }
     /* Napit ovat ruudun alakulmissa. env(safe-area-inset-...) väistää kännykän kameran loven. */
-    .vasen  { left: calc(16px + env(safe-area-inset-left)); bottom: 18px; }
-    .oikea  { left: calc(106px + env(safe-area-inset-left)); bottom: 18px; }
-    .hyppy  { right: calc(16px + env(safe-area-inset-right)); bottom: 18px; width: 90px; height: 90px; }
-    .ammu   { right: calc(118px + env(safe-area-inset-right)); bottom: 18px; }
+    .vasen  { left: calc(var(--reuna) + env(safe-area-inset-left, 0px)); bottom: var(--ala); }
+    .oikea  { left: calc(var(--reuna) + env(safe-area-inset-left, 0px) + var(--nappi) + var(--vali)); bottom: var(--ala); }
+    .hyppy  { right: calc(var(--reuna) + env(safe-area-inset-right, 0px)); bottom: var(--ala);
+              width: var(--iso); height: var(--iso); font-size: calc(var(--iso) * 0.45); }
+    .ammu   { right: calc(var(--reuna) + env(safe-area-inset-right, 0px) + var(--iso) + var(--vali)); bottom: var(--ala); }
     /* Pienet napit ruudun vasemmassa reunassa */
-    .pieni  { width: 44px; height: 44px; font-size: 20px; left: calc(10px + env(safe-area-inset-left)); }
-    .kartalle { top: 90px; }
-    .alusta   { top: 142px; }
-    .aanet    { top: 194px; }
+    .pieni  { width: var(--pieni); height: var(--pieni); font-size: calc(var(--pieni) * 0.45);
+              left: calc(var(--reuna) + env(safe-area-inset-left, 0px)); }
+    .kartalle { top: 18vmin; }
+    .alusta   { top: calc(18vmin + var(--pieni) + var(--pieniVali)); }
+    .aanet    { top: calc(18vmin + (var(--pieni) + var(--pieniVali)) * 2); }
+    .koko     { top: calc(18vmin + (var(--pieni) + var(--pieniVali)) * 3); }
 
     /* Pystyasennossa pyydetään kääntämään puhelin */
     @media (orientation: portrait) {
@@ -98,10 +116,10 @@
 
   <p>
     Liiku: ← → tai A D &nbsp;|&nbsp; Hyppää: ↑, W tai välilyönti &nbsp;|&nbsp;
-    Tulipallo: X &nbsp;|&nbsp; Äänet: M &nbsp;|&nbsp; Maailma alusta: R (paina 2 kertaa) &nbsp;|&nbsp; Kartalle: Esc
+    Tulipallo: X &nbsp;|&nbsp; Äänet: M &nbsp;|&nbsp; Maailma alusta: R (paina 2 kertaa) &nbsp;|&nbsp; Tauko: Esc
   </p>
   <p>
-    Kaksinpeli (valitse alkuruudussa nuolilla):
+    Kaksinpeli (valitse alkuvalikosta "Pelaajat"):
     Pelaaja 1: A D W + F &nbsp;|&nbsp; Pelaaja 2: ← → ↑ + L tai Enter
   </p>
 
@@ -114,6 +132,7 @@
     <div class="nappi pieni kartalle" data-nappi="Escape">☰</div>
     <div class="nappi pieni alusta" data-nappi="KeyR">↻</div>
     <div class="nappi pieni aanet" data-nappi="KeyM">🔊</div>
+    <div class="nappi pieni koko" id="kokonappi">🔍</div>
   </div>
   <div id="kaanna">
     <div style="font-size: 60px">🔄</div>
