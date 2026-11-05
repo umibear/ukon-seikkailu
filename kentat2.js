@@ -574,7 +574,8 @@ function kentta11() {
       vasen: 1490,
       oikea: 2390,
       alue: 1560,
-      portti: { x: 1440, y: 200, leveys: 32, korkeus: 210 },
+      // Portti ulottuu ruudun yläreunan yli, ettei sen yli voi hypätä
+      portti: { x: 1440, y: -400, leveys: 32, korkeus: 810 },
     },
 
     sydamet: [{ x: 1965, y: 180 }],

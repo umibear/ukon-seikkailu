@@ -567,7 +567,9 @@ function kentta5() {
       vasen: 1445,
       oikea: 2452,
       alue: 1560,
-      portti: { x: 1410, y: 240, leveys: 32, korkeus: 170 },
+      // Portti ulottuu ruudun yläreunan yli, ettei sen yli voi hypätä
+      // (Isäukon pään päältä pomppu vie tosi korkealle!)
+      portti: { x: 1410, y: -400, leveys: 32, korkeus: 810 },
     },
 
     // SALAINEN LUOLA! Kallio näyttää tavalliselta, mutta sen sisällä on luola.
