@@ -21,6 +21,8 @@ Pelaaja 1: A D W + F, pelaaja 2: ← → ↑ + L tai Enter.
 ## Koodi
 
 Peli on tehty tavallisella JavaScriptillä ilman kirjastoja. Kuvat on piirretty pikseli kerrallaan.
+Jokaisella kentällä on oma kappale. Nuotit ovat tiedostossa `musiikki.js`, ja niitä voi muokata itse.
+Musiikin saa pois taukovalikosta (Esc / ☰).
 Kansiossa `testit/` on botti, joka kokeilee, pääseekö kentät läpi: `node testit/botti.js 7`
 
 ## Lisenssi

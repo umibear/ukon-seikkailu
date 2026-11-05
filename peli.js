@@ -505,6 +505,7 @@ function valikonRivit() {
     return [
       { id: "jatkaTaukoa", teksti: "Jatka peliä" },
       { id: "kartalle", teksti: "Palaa kartalle" },
+      { id: "musiikki", teksti: "Musiikki", lisa: musiikkiPaalla ? "päällä" : "pois" },
       { id: "poistu", teksti: "Poistu pelistä" },
     ];
   }
@@ -563,6 +564,9 @@ function valitseRivi(id) {
     aanet.laskuri();
   } else if (id === "jatkaTaukoa") {
     jatkaTauolta();
+  } else if (id === "musiikki") {
+    vaihdaMusiikki();
+    aanet.laskuri();
   } else if (id === "kartalle") {
     avaaKartta();
   } else if (id === "poistu") {
@@ -674,6 +678,7 @@ function tarkistaEnnatys() {
 // Lataa kentän ja laittaa pelaajan sen alkuun
 function aloitaKentta(numero) {
   kenttaNumero = numero;
+  aloitaMusiikkiAlusta(); // jokaisen kentän kappale alkaa alusta (musiikki.js)
   alustaVahvistus = 0;
   kentta = KENTAT[numero](); // kutsutaan kentän funktiota, esim. kentta1()
   valmisteleKentta(kentta);
@@ -1657,6 +1662,7 @@ function piirraRuutu(kuva, ruutu, ruudunLeveys, ruudunKorkeus, x, y, peilaa) {
 function paivita(dt) {
   // Nämä liikkuvat aina, vaikka peli olisi pysähdyksissä
   paivitaTehosteet(dt);
+  paivitaMusiikki(); // musiikki.js
   if (tila === "tauko") return; // tauolla kaikki on pysähdyksissä
   if (alustaVahvistus > 0) alustaVahvistus -= dt;
   for (const p of pilvet) p.x += p.nopeus * dt;
@@ -3106,8 +3112,9 @@ function piirraTauko(aika) {
   ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   piirraValikko(aika);
+  const v = valikonAsettelu();
   const vihje = ohje("↑ ↓ valitse     Enter hyväksyy     Esc jatkaa", "Napauta valintaa");
-  reunaTeksti(vihje, canvas.width / 2, 360, 16, "center");
+  reunaTeksti(vihje, canvas.width / 2, v.y + v.korkeus + 26, 16, "center");
 }
 
 // Ohjeruutu: napit selkeästi taulukkona (vasemmalla mitä tehdään, oikealla millä)

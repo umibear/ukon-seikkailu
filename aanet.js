@@ -29,6 +29,7 @@ function piippaus(aalto, alkuKorkeus, loppuKorkeus, kesto, voimakkuus, viive) {
   const alku = aaniKonteksti.currentTime + viive;
   const oskillaattori = aaniKonteksti.createOscillator(); // tekee äänen
   const vahvistin = aaniKonteksti.createGain(); // säätää voimakkuutta
+  vahvistin.gain.value = 0; // hiljaa ennen kuin ääni alkaa, ettei kuulu napsahdusta
 
   oskillaattori.type = aalto;
   oskillaattori.frequency.setValueAtTime(alkuKorkeus, alku);
