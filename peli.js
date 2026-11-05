@@ -3338,26 +3338,24 @@ let edellinenAika = performance.now();
 // Joissain kännyköissä on 120 Hz näyttö: silloin selain kutsuu silmukkaa
 // 120 kertaa sekunnissa. Peli on tehty 60 ruudulle sekunnissa, joten silloin
 // joka toinen kerta jätetään väliin. Kännykkä tekee puolet vähemmän työtä!
-let edellinenKutsu = 0;
-let kutsujenVali = 1000 / 60; // keskimääräinen aika kutsujen välillä (ms)
-let jokaToinen = false; // true = näyttö on nopea, piirretään joka toinen kerta
-let ohitaTama = false;
+// Joka kerta katsotaan, onko edellisestä piirrosta kulunut tarpeeksi aikaa.
+// Näin toimii heti, vaikka kännykkä vaihtaisi näytön nopeutta kesken pelin
+// (esim. One Plus vaihtelee 60, 90 ja 120 Hz välillä).
+//   120 Hz: kutsujen väli 8,3 ms  -> joka toinen jätetään väliin -> 60 ruutua
+//    90 Hz: väli 11,1 ms          -> jokainen piirretään       -> 90 ruutua
+//    60 Hz: väli 16,7 ms          -> jokainen piirretään       -> 60 ruutua
+const PIIRTOJEN_VALI = 9.7; // ms, puolivälissä 8,3 ja 11,1 välillä
+let edellinenPiirto = -Infinity;
+let kutsuja = 0; // montako kertaa selain kutsui silmukkaa (FPS-mittarin "näyttö Hz")
 
 function silmukka(nyt) {
   // Seuraava kierros pyydetään heti alussa. Silloin peli jatkuu,
   // vaikka tällä kierroksella tapahtuisi jokin virhe.
   requestAnimationFrame(silmukka);
 
-  // Mitataan, kuinka nopea näyttö on (liukuva keskiarvo)
-  const vali = nyt - edellinenKutsu;
-  edellinenKutsu = nyt;
-  if (vali > 0 && vali < 50) kutsujenVali = kutsujenVali * 0.95 + vali * 0.05;
-  if (kutsujenVali < 9.5) jokaToinen = true; // yli 105 Hz
-  if (kutsujenVali > 12) jokaToinen = false; // alle 83 Hz
-  if (jokaToinen) {
-    ohitaTama = !ohitaTama;
-    if (ohitaTama) return;
-  }
+  kutsuja++;
+  if (nyt - edellinenPiirto < PIIRTOJEN_VALI) return; // liian pian: odotetaan seuraavaa
+  edellinenPiirto = nyt;
 
   let dt = (nyt - edellinenAika) / (1000 / 60);
   if (dt > 1.5) dt = 1.5; // ettei pelaaja hyppää tasojen läpi, jos kone takkuaa
@@ -3375,12 +3373,12 @@ function silmukka(nyt) {
 // pitkä hitain väli oli. Päälle ja pois: F3 (tietokone) tai ⚙️ → FPS (kännykkä).
 // Myös osoitteen loppuun voi lisätä ?fps
 let naytaFps = location.search.includes("fps") || lataaFpsAsetus();
-const fpsMittari = { ruudut: 0, alku: 0, hitain: 0, edellinen: 0, teksti: "" };
+const fpsMittari = { ruudut: 0, alku: 0, hitain: 0, edellinen: 0, kutsuja: 0, teksti: "" };
 
 function vaihdaFps() {
   naytaFps = !naytaFps;
   // Mittaus alkaa alusta, ettei vanha tulos näy
-  Object.assign(fpsMittari, { ruudut: 0, alku: performance.now(), hitain: 0, edellinen: 0, teksti: "" });
+  Object.assign(fpsMittari, { ruudut: 0, alku: performance.now(), hitain: 0, edellinen: 0, kutsuja, teksti: "" });
   try {
     localStorage.setItem("ukonSeikkailuFps", naytaFps ? "1" : "0");
   } catch (virhe) {
@@ -3398,12 +3396,15 @@ function lataaFpsAsetus() {
 
 function mittaaFps(nyt) {
   const m = fpsMittari;
+  if (!m.alku) Object.assign(m, { alku: nyt, kutsuja }); // ensimmäinen mittaus alkaa nyt
   if (m.edellinen) m.hitain = Math.max(m.hitain, nyt - m.edellinen);
   m.edellinen = nyt;
   m.ruudut++;
   if (nyt - m.alku >= 1000) {
     const fps = Math.round((m.ruudut * 1000) / (nyt - m.alku));
-    const naytto = Math.round(1000 / kutsujenVali);
+    // Näytön nopeus = montako kertaa selain kutsui silmukkaa tämän sekunnin aikana
+    const naytto = Math.round(((kutsuja - m.kutsuja) * 1000) / (nyt - m.alku));
+    m.kutsuja = kutsuja;
     m.teksti = fps + " fps   hitain " + Math.round(m.hitain) + " ms   näyttö " + naytto + " Hz";
     m.ruudut = 0;
     m.alku = nyt;
