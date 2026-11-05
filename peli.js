@@ -2923,6 +2923,10 @@ function piirra(aika) {
 let edellinenAika = performance.now();
 
 function silmukka(nyt) {
+  // Seuraava kierros pyydetään heti alussa. Silloin peli jatkuu,
+  // vaikka tällä kierroksella tapahtuisi jokin virhe.
+  requestAnimationFrame(silmukka);
+
   let dt = (nyt - edellinenAika) / (1000 / 60);
   if (dt > 1.5) dt = 1.5; // ettei pelaaja hyppää tasojen läpi, jos kone takkuaa
   if (dt < 0) dt = 0;
@@ -2931,10 +2935,13 @@ function silmukka(nyt) {
   paivita(dt);
   paivitaKamera(dt);
   piirra(nyt);
-  requestAnimationFrame(silmukka);
 }
 
 // Ladataan ensimmäinen kenttä aloitusruudun taustaksi
 kentta = KENTAT[0]();
 valmisteleKentta(kentta);
-requestAnimationFrame(silmukka);
+
+// Peli käynnistetään vasta, kun KAIKKI tiedostot on ladattu.
+// (Muuten selain saattaa aloittaa pelin ennen kuin tehosteet.js ja
+// kartta.js ovat valmiita, ja ruutu jää siniseksi.)
+addEventListener("DOMContentLoaded", () => requestAnimationFrame(silmukka));
