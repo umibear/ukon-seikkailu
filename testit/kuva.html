@@ -1,0 +1,25 @@
+<!DOCTYPE html><html><head><base href="../"><meta charset="UTF-8"><style>body{margin:0;overflow:hidden}</style></head><body>
+<!-- Kuvakaappaustyökalu: kuva.html?k=<kenttä 1-11>&x=<ukon x>&y=<ukon y>&f=<montako ruutua pelataan> -->
+<canvas id="peli" width="800" height="450"></canvas>
+<script src="aanet.js"></script><script src="kentat.js"></script><script src="kentat2.js"></script><script src="tulivuori.js"></script><script src="tulivihut.js"></script><script src="peli.js"></script><script src="kartta.js"></script><script src="tehosteet.js"></script><script src="kosketus.js"></script>
+<script>
+const haku = new URLSearchParams(location.search);
+setTimeout(() => {
+  aloitaPeli();
+  aloitaKentta(+haku.get("k") - 1);
+  for (let i = 0; i < 30; i++) paivita(1);
+  pelaaja1.x = +haku.get("x"); pelaaja1.y = +(haku.get("y") || 300);
+  const f = +(haku.get("f") || 60);
+  for (let i = 0; i < f; i++) {
+    pelaaja1.suojaAika = 99999;
+    if (haku.get("litista") && i === f - 25) {
+      const v = kentta.viholliset.find((v) => v.tyyppi === "kekale" && v.elossa);
+      pelaaja1.x = v.x; pelaaja1.y = v.y - 44; pelaaja1.edellinenY = pelaaja1.y - 4; pelaaja1.vy = 5;
+    }
+    paivita(1);
+  }
+  pelaaja1.suojaAika = 0;
+  window.requestAnimationFrame = () => {}; paivita = () => {}; // peli pysähtyy kuvaa varten
+  setTimeout(() => { kameraHyppaa = true; paivitaKamera(1); piirra(f * 16); }, 100);
+}, 300);
+</script></body></html>

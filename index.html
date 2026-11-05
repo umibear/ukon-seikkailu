@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+  <meta charset="UTF-8">
+  <!-- Kännykässä: sivu on ruudun levyinen eikä sitä voi zoomata -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Ukon seikkailu</title>
+  <style>
+    body {
+      background: #222;
+      color: #eee;
+      font-family: sans-serif;
+      text-align: center;
+    }
+    canvas {
+      background: #87ceeb;
+      border: 4px solid #555;
+      margin-top: 20px;
+    }
+
+    /* ---------- KÄNNYKKÄ ---------- */
+    /* Kosketusnapit näkyvät vain kännykässä (kosketus.js lisää luokan "kosketus") */
+    #kosketusnapit, #kaanna { display: none; }
+
+    body.kosketus {
+      margin: 0;
+      overflow: hidden;
+      background: black;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      touch-action: none;
+    }
+    body.kosketus h1, body.kosketus p { display: none; }
+    /* Peli täyttää koko ruudun, mutta kuva ei veny vinoon */
+    body.kosketus canvas {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      margin: 0;
+      border: none;
+      background: black;
+      object-fit: contain;
+    }
+    body.kosketus #kosketusnapit { display: block; }
+
+    .nappi {
+      position: fixed;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 76px;
+      height: 76px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.18);
+      border: 3px solid rgba(255, 255, 255, 0.45);
+      color: white;
+      font-size: 34px;
+      font-weight: bold;
+    }
+    .nappi.pohjassa { background: rgba(255, 210, 60, 0.5); }
+    /* Napit ovat ruudun alakulmissa. env(safe-area-inset-...) väistää kännykän kameran loven. */
+    .vasen  { left: calc(16px + env(safe-area-inset-left)); bottom: 18px; }
+    .oikea  { left: calc(106px + env(safe-area-inset-left)); bottom: 18px; }
+    .hyppy  { right: calc(16px + env(safe-area-inset-right)); bottom: 18px; width: 90px; height: 90px; }
+    .ammu   { right: calc(118px + env(safe-area-inset-right)); bottom: 18px; }
+    /* Pienet napit ruudun vasemmassa reunassa */
+    .pieni  { width: 44px; height: 44px; font-size: 20px; left: calc(10px + env(safe-area-inset-left)); }
+    .kartalle { top: 90px; }
+    .alusta   { top: 142px; }
+    .aanet    { top: 194px; }
+
+    /* Pystyasennossa pyydetään kääntämään puhelin */
+    @media (orientation: portrait) {
+      body.kosketus #kaanna {
+        display: flex;
+        position: fixed;
+        inset: 0;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        background: #222;
+        font-size: 26px;
+        z-index: 10;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Ukon seikkailu</h1>
+
+  <!-- Tähän piirretään koko peli -->
+  <canvas id="peli" width="800" height="450"></canvas>
+
+  <p>
+    Liiku: ← → tai A D &nbsp;|&nbsp; Hyppää: ↑, W tai välilyönti &nbsp;|&nbsp;
+    Tulipallo: X &nbsp;|&nbsp; Äänet: M &nbsp;|&nbsp; Kenttä alusta: R &nbsp;|&nbsp; Kartalle: Esc
+  </p>
+  <p>
+    Kaksinpeli (valitse alkuruudussa nuolilla):
+    Pelaaja 1: A D W + F &nbsp;|&nbsp; Pelaaja 2: ← → ↑ + L tai Enter
+  </p>
+
+  <!-- Kännykän napit. data-nappi kertoo, mitä näppäimistön nappia nappi painaa. -->
+  <div id="kosketusnapit">
+    <div class="nappi vasen" data-nappi="ArrowLeft">◀</div>
+    <div class="nappi oikea" data-nappi="ArrowRight">▶</div>
+    <div class="nappi ammu" data-nappi="KeyX">🔥</div>
+    <div class="nappi hyppy" data-nappi="ArrowUp">⬆</div>
+    <div class="nappi pieni kartalle" data-nappi="Escape">☰</div>
+    <div class="nappi pieni alusta" data-nappi="KeyR">↻</div>
+    <div class="nappi pieni aanet" data-nappi="KeyM">🔊</div>
+  </div>
+  <div id="kaanna">
+    <div style="font-size: 60px">🔄</div>
+    Käännä puhelin vaakatasoon!
+  </div>
+
+  <!-- Pelin koodi on jaettu moneen tiedostoon. Järjestys on tärkeä:
+       myöhemmät tiedostot käyttävät asioita, jotka on tehty aiemmissa. -->
+  <script src="aanet.js"></script>
+  <script src="kentat.js"></script>
+  <script src="kentat2.js"></script>
+  <script src="tulivuori.js"></script>
+  <script src="tulivihut.js"></script>
+  <script src="peli.js"></script>
+  <script src="kartta.js"></script>
+  <script src="tehosteet.js"></script>
+  <script src="kosketus.js"></script>
+</body>
+</html>
