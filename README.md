@@ -22,3 +22,7 @@ Pelaaja 1: A D W + F, pelaaja 2: ← → ↑ + L tai Enter.
 
 Peli on tehty tavallisella JavaScriptillä ilman kirjastoja. Kuvat on piirretty pikseli kerrallaan.
 Kansiossa `testit/` on botti, joka kokeilee, pääseekö kentät läpi: `node testit/botti.js 7`
+
+## Lisenssi
+
+MIT – katso [LICENSE](LICENSE). Saat käyttää, muokata ja jakaa peliä vapaasti, kunhan lisenssiteksti pysyy mukana.
