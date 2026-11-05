@@ -86,6 +86,7 @@ function naytaKarttaViesti(teksti) {
 // Siirrytään kartalle
 function avaaKartta() {
   tila = "kartta";
+  tallennaPeli(); // pelin eteneminen tallentuu aina kartalle tultaessa (peli.js)
   aloitaSiirtyma();
   kartanKohde = null;
   tulipallot = [];

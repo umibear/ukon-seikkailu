@@ -1,15 +1,16 @@
 // Lataa pelin Node.js:ään ilman selainta (testejä ja bottia varten)
 const fs = require("fs"), vm = require("vm"), path = require("path");
 const D = path.join(__dirname, "..") + "/";
-module.exports = function lataa() {
+module.exports = function lataa(muisti) {
+  const kuuntelijat = {};
   const ctxStub = new Proxy({}, { get: (t, k) => (k in t ? t[k] : () => ({ addColorStop() {} })), set: (t, k, v) => ((t[k] = v), true) });
   const canvasStub = () => ({ width: 800, height: 450, getContext: () => ctxStub });
   const g = {
     console, Math, structuredClone, performance: { now: () => 0 },
     document: { getElementById: canvasStub, createElement: canvasStub, addEventListener() {} },
-    window: { addEventListener() {} }, addEventListener() {},
+    window: { addEventListener() {} }, addEventListener: (tyyppi, f) => (kuuntelijat[tyyppi] = kuuntelijat[tyyppi] || []).push(f),
     Image: function () { this.width = 64; this.height = 32; },
-    AudioContext: function () {}, localStorage: { getItem: () => null, setItem() {} },
+    AudioContext: function () {}, localStorage: muisti || { getItem: () => null, setItem() {}, removeItem() {} },
     requestAnimationFrame() {},
     matchMedia: () => ({ matches: false }), location: { search: "" }, dispatchEvent() {}, KeyboardEvent: function () {},
   };
@@ -29,5 +30,11 @@ module.exports = function lataa() {
     pisteet = s.pisteet; tarina = s.tarina; kaksinpeli = s.kaksinpeli; pelaajat = kaksinpeli ? [pelaaja1, pelaaja2] : [pelaaja1]; pelaaja = pelaaja1;
     hiukkaset = []; tekstit = []; for (const k in napit) delete napit[k]; };`;
   vm.runInContext(koodi, g);
+  g.T.ev("aanetPaalla = false"); // testeissä ei ole kaiuttimia
+  // Painaa näppäintä kuin oikea näppäimistö (keydown ja keyup)
+  g.T.paina = (koodi, lisat = {}) => {
+    for (const tyyppi of ["keydown", "keyup"])
+      for (const f of kuuntelijat[tyyppi] || []) f({ code: koodi, repeat: false, shiftKey: false, preventDefault() {}, ...lisat });
+  };
   return g.T;
 };

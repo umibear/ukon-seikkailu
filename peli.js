@@ -30,7 +30,11 @@ const TIPPUJAN_TARINA = 15; // kuinka kauan tippuja tärisee ennen putoamista
 const KAKSINPELIN_VALI = 700; // kuinka kauas pelaajat voivat mennä toisistaan (ruutu on 800 leveä)
 const HAAMU_HERAA_ELAMIA = 1; // montako elämää haamu saa, kun se herää seuraavassa kentässä
 const SUOJA_AIKA = 90; // Kuinka kauan ukko vilkkuu ja on suojassa (60 = 1 sekunti)
-const TESTITILA = false; // true = alkuvalikossa voi hypätä suoraan kenttään numeronäppäimillä
+// Testitila: alkuvalikossa voi hypätä suoraan kenttään numeronäppäimillä.
+// Se on päällä vain omalla koneella (index.html avattu tiedostona tai localhost),
+// ei netissä. Jos haluat sen aina pois, vaihda tähän: const TESTITILA = false;
+const TESTITILA =
+  location.protocol === "file:" || location.hostname === "localhost" || location.hostname === "127.0.0.1";
 
 // Pisteet
 const PISTEET_KOLIKKO = 100; // yhdestä kolikosta
@@ -217,15 +221,23 @@ addEventListener("keydown", (e) => {
   // uudestaan, eli nappia pitää painaa joka kerta erikseen.
   if (!e.repeat) {
     const tilaEnnen = tila; // muistetaan, ettei kentän aloitus Enterillä ammu heti
-    // Alkuruudussa valitaan nuolilla yksin- tai kaksinpeli
-    // (Kännykällä pelataan aina yksin, koska ohjaimia on vain yhdet)
-    if (tila === "alku" && !kosketusOhjaus && (e.code.startsWith("Arrow") || ["KeyA", "KeyD", "KeyW", "KeyS"].includes(e.code))) {
-      kaksinpeli = !kaksinpeli;
-      aanet.laskuri();
+    // Alkuruudussa valitaan ← → yksin- tai kaksinpeli ja ↑ ↓ jatka tai uusi peli.
+    // Kännykällä pelataan aina yksin, joten siellä ◀ ▶ valitsee jatka tai uusi peli.
+    if (tila === "alku") {
+      const sivulle = ["ArrowLeft", "ArrowRight", "KeyA", "KeyD"].includes(e.code);
+      const ylosAlas = ["ArrowUp", "ArrowDown", "KeyW", "KeyS"].includes(e.code);
+      if (sivulle && !kosketusOhjaus) {
+        kaksinpeli = !kaksinpeli;
+        aanet.laskuri();
+      } else if (tallennus && (ylosAlas || (sivulle && kosketusOhjaus))) {
+        alkuValinta = alkuValinta === "jatka" ? "uusi" : "jatka";
+        uusiVahvistus = false;
+        aanet.laskuri();
+      }
     }
 
     if (e.code === "Space" || e.code === "Enter") {
-      if (tila === "alku") aloitaPeli();
+      if (tila === "alku") valitseAlkuruudusta();
       else if (tila === "kartta") valitseKartalta();
       else if (tila === "kenttaValmis") seuraavaKentta();
     }
@@ -236,10 +248,18 @@ addEventListener("keydown", (e) => {
       if (e.code === "ArrowLeft" || e.code === "KeyA") liikuKartalla(-1);
     }
 
-    // R: kesken kentän aloitetaan kenttä alusta, pelin lopussa koko peli
+    // R: kesken kentän maailma alkaa alusta (painetaan kaksi kertaa),
+    // häviön jälkeen maailma alkaa alusta ja voiton jälkeen koko peli
     if (e.code === "KeyR") {
-      if (tila === "peli") aloitaKentta(kenttaNumero);
-      if (tila === "havio" || tila === "voitto") aloitaPeli();
+      if (tila === "peli") {
+        if (alustaVahvistus > 0) aloitaMaailmaAlusta();
+        else {
+          alustaVahvistus = ALUSTA_VAHVISTUS_AIKA; // varoitus näkyy hetken
+          aanet.tyhja();
+        }
+      }
+      if (tila === "havio") aloitaMaailmaAlusta();
+      if (tila === "voitto") aloitaPeli();
     }
     // Esc: kesken kentän palataan kartalle
     if (e.code === "Escape" && tila === "peli") avaaKartta();
@@ -250,6 +270,7 @@ addEventListener("keydown", (e) => {
       let numero = Number(e.code.replace("Digit", "")) - 1; // "Digit3" -> 2
       if (e.shiftKey) numero += MAAILMAT[1].alku;
       if (numero >= 0 && numero < KENTAT.length) {
+        testiPeli = true; // testipeliä ei tallenneta
         aloitaPeli();
         avattu = KENTAT.length - 1; // testissä kaikki kentät ovat auki
         kartanKohta = numero;
@@ -287,6 +308,12 @@ function osuu(a, b) {
 
 // Aloittaa koko pelin alusta (ensimmäisestä kentästä)
 function aloitaPeli() {
+  nollaaPeli();
+  avaaKartta();
+}
+
+// Nollaa kaiken: elämät, pisteet ja avatut kentät
+function nollaaPeli() {
   pelaajat = kaksinpeli ? [pelaaja1, pelaaja2] : [pelaaja1];
   for (const pl of [pelaaja1, pelaaja2]) {
     pl.elamat = ELAMIA_ALUSSA;
@@ -300,7 +327,30 @@ function aloitaPeli() {
   avattu = 0; // vain ensimmäinen kenttä on auki
   kartanKohta = 0;
   uusiKentta = -1;
+}
+
+// Kun elämät loppuvat: nykyinen maailma alkaa alusta, mutta
+// aiemmat maailmat pysyvät läpäistyinä.
+function aloitaMaailmaAlusta() {
+  const numero = maailmanNumero(kenttaNumero);
+  const m = MAAILMAT[numero];
+  for (const pl of [pelaaja1, pelaaja2]) {
+    pl.elamat = ELAMIA_ALUSSA;
+    pl.haamu = false;
+  }
+  // Tämän maailman kenttien pisteet ja kolikot unohdetaan
+  for (let i = m.alku; i <= m.loppu; i++) {
+    delete parhaatPisteet[i];
+    delete parhaatKolikot[i];
+  }
+  pisteet = summa(parhaatPisteet);
+  kaikkiKolikot = summa(parhaatKolikot);
+  uusiEnnatys = false;
+  avattu = m.alku;
+  kartanKohta = m.alku;
+  uusiKentta = -1;
   avaaKartta();
+  naytaKarttaViesti("Maailma " + (numero + 1) + " alkaa alusta!");
 }
 
 // Kun kenttä on läpäisty ja painetaan välilyöntiä
@@ -390,6 +440,75 @@ function lataaEnnatys() {
   }
 }
 
+// ---------- TALLENNUS ----------
+// Pelin eteneminen (avatut kentät, pisteet ja elämät) tallennetaan
+// selaimen muistiin aina, kun palataan kartalle.
+const TALLENNUKSEN_NIMI = "ukonSeikkailuTallennus";
+let tallennus = lataaTallennus(); // null = ei tallennettua peliä
+let alkuValinta = "jatka"; // alkuruudun valinta: "jatka" tai "uusi"
+let uusiVahvistus = false; // true = "Uusi peli" painettiin kerran, odotetaan vahvistusta
+let testiPeli = false; // testitilassa aloitettua peliä ei tallenneta
+const ALUSTA_VAHVISTUS_AIKA = 150; // kuinka kauan on aikaa painaa R toisen kerran (60 = 1 s)
+let alustaVahvistus = 0; // kun yli 0, R:n toinen painallus aloittaa maailman alusta
+
+function lataaTallennus() {
+  try {
+    const t = JSON.parse(localStorage.getItem(TALLENNUKSEN_NIMI));
+    return t && typeof t.avattu === "number" ? t : null;
+  } catch (virhe) {
+    return null;
+  }
+}
+
+function tallennaPeli() {
+  if (testiPeli) return;
+  tallennus = {
+    avattu: avattu,
+    kartanKohta: kartanKohta,
+    parhaatPisteet: parhaatPisteet,
+    parhaatKolikot: parhaatKolikot,
+    elamat: [pelaaja1.elamat, pelaaja2.elamat],
+  };
+  try {
+    localStorage.setItem(TALLENNUKSEN_NIMI, JSON.stringify(tallennus));
+  } catch (virhe) {
+    // ei haittaa, peli vain ei tallennu
+  }
+}
+
+// Jatketaan tallennetusta pelistä
+function jatkaPelia() {
+  const t = tallennus;
+  nollaaPeli();
+  // JSON muuttaa tyhjät kohdat null-arvoiksi, joten ne muutetaan takaisin
+  const korjaa = (lista) => (lista || []).map((x) => (x === null ? undefined : x));
+  avattu = Math.min(t.avattu, KENTAT.length - 1);
+  kartanKohta = Math.min(t.kartanKohta || 0, avattu);
+  parhaatPisteet = korjaa(t.parhaatPisteet);
+  parhaatKolikot = korjaa(t.parhaatKolikot);
+  pisteet = summa(parhaatPisteet);
+  kaikkiKolikot = summa(parhaatKolikot);
+  const elamat = t.elamat || [];
+  pelaaja1.elamat = Math.max(1, elamat[0] || ELAMIA_ALUSSA);
+  pelaaja2.elamat = Math.max(1, elamat[1] || ELAMIA_ALUSSA);
+  avaaKartta();
+}
+
+// Välilyönti tai napautus alkuruudussa
+function valitseAlkuruudusta() {
+  testiPeli = false;
+  if (!tallennus) return aloitaPeli();
+  if (alkuValinta === "jatka") return jatkaPelia();
+  if (!uusiVahvistus) {
+    uusiVahvistus = true; // pitää painaa vielä kerran, ettei tallennus häviä vahingossa
+    aanet.tyhja();
+    return;
+  }
+  uusiVahvistus = false;
+  alkuValinta = "jatka";
+  aloitaPeli(); // vanha tallennus korvautuu uudella pelillä
+}
+
 function tarkistaEnnatys() {
   if (pisteet > ennatys) {
     ennatys = pisteet;
@@ -406,6 +525,7 @@ function tarkistaEnnatys() {
 // Lataa kentän ja laittaa pelaajan sen alkuun
 function aloitaKentta(numero) {
   kenttaNumero = numero;
+  alustaVahvistus = 0;
   kentta = KENTAT[numero](); // kutsutaan kentän funktiota, esim. kentta1()
   valmisteleKentta(kentta);
 
@@ -670,6 +790,9 @@ function menetaElama() {
 
   pelaaja.suojaAika = SUOJA_AIKA;
   pelaaja.tuli = TULI_MAX;
+  // Ukko seisoo paikallaan, kunnes napit nostetaan ylös. Muuten ukko
+  // juoksisi heti uudestaan samaan kuoppaan, jos nappi jäi pohjaan.
+  pelaaja.odotaNostoa = true;
 
   if (toinenElossa) {
     // Kaksinpeli: ukko syntyy uudestaan kaverinsa luo
@@ -1385,6 +1508,7 @@ function piirraRuutu(kuva, ruutu, ruudunLeveys, ruudunKorkeus, x, y, peilaa) {
 function paivita(dt) {
   // Nämä liikkuvat aina, vaikka peli olisi pysähdyksissä
   paivitaTehosteet(dt);
+  if (alustaVahvistus > 0) alustaVahvistus -= dt;
   for (const p of pilvet) p.x += p.nopeus * dt;
   paivitaHiukkaset(dt);
   if (tarina > 0) tarina -= dt;
@@ -1677,8 +1801,14 @@ function paivitaPelaaja(dt) {
 
   // 1. Luetaan napit
   pelaaja.vx = 0;
-  if (painettu(pelaaja, "vasen")) pelaaja.vx = -NOPEUS;
-  if (painettu(pelaaja, "oikea")) pelaaja.vx = NOPEUS;
+  if (pelaaja.odotaNostoa) {
+    // Kuoleman jälkeen odotetaan, että kaikki liikenapit ovat ylhäällä
+    const pohjassa =
+      painettu(pelaaja, "vasen") || painettu(pelaaja, "oikea") || hyppyNappiPohjassa();
+    if (!pohjassa) pelaaja.odotaNostoa = false;
+  }
+  if (!pelaaja.odotaNostoa && painettu(pelaaja, "vasen")) pelaaja.vx = -NOPEUS;
+  if (!pelaaja.odotaNostoa && painettu(pelaaja, "oikea")) pelaaja.vx = NOPEUS;
 
   // Seinähypyn jälkeen ukko lentää hetken seinästä poispäin,
   // vaikka nuolinäppäin olisi pohjassa seinää kohti.
@@ -1689,7 +1819,7 @@ function paivitaPelaaja(dt) {
   if (pelaaja.vx > 0) pelaaja.suunta = 1;
   if (pelaaja.vx < 0) pelaaja.suunta = -1;
 
-  const hyppyNappi = hyppyNappiPohjassa();
+  const hyppyNappi = !pelaaja.odotaNostoa && hyppyNappiPohjassa();
   const hyppyPainettiin = hyppyNappi && !pelaaja.hyppyNappiEnnen; // painettiin juuri nyt
   pelaaja.hyppyNappiEnnen = hyppyNappi;
   pelaaja.seina = pelaaja.maassa ? 0 : seinaVieressa();
@@ -2646,6 +2776,20 @@ function piirraTiedot() {
     if (!pl.haamu) piirraTulimittari(pl, y);
   }
   piirraPomonPalkki();
+
+  // R painettiin kerran: varoitus keskellä ruutua
+  if (alustaVahvistus > 0 && tila === "peli") {
+    const maailma = maailmanNumero(kenttaNumero) + 1;
+    reunaTeksti(
+      ohje("Paina R uudestaan:", "Paina ↻ uudestaan:") + " maailma " + maailma + " alkaa alusta!",
+      canvas.width / 2,
+      150,
+      24,
+      "center",
+      "#ff8080",
+    );
+    reunaTeksti("(täydet elämät, mutta maailman kentät pitää pelata uudestaan)", canvas.width / 2, 178, 16, "center");
+  }
 }
 
 // Pelaajan sydämet (y = kuinka paljon alemmas piirretään)
@@ -2756,10 +2900,26 @@ function piirraAloitusruutu(aika) {
 
   // Pelaajien määrä: vaihdetaan nuolinäppäimillä
   const valinta = kaksinpeli ? "2 PELAAJAA" : "1 PELAAJA";
-  if (!kosketusOhjaus) reunaTeksti("◀  " + valinta + "  ▶", canvas.width / 2, 288, 24, "center", "gold");
+  const valintaY = tallennus ? 282 : 288;
+  if (!kosketusOhjaus) reunaTeksti("◀  " + valinta + "  ▶", canvas.width / 2, valintaY, 24, "center", "gold");
 
-  // Vilkkuva ohje
-  if (Math.floor(aika / 500) % 2 === 0) {
+  // Jos peli on tallennettu: valitaan "Jatka" tai "Uusi peli"
+  if (tallennus) {
+    const kohta = Math.min(tallennus.avattu, KENTAT.length - 1);
+    const jatka = "JATKA (maailma " + (maailmanNumero(kohta) + 1) + ", kenttä " + (kohta + 1) + ")";
+    const uusi = uusiVahvistus ? "UUSI PELI? Paina uudestaan: tallennus poistuu!" : "UUSI PELI";
+    const vilkkuu = Math.floor(aika / 400) % 2 === 0;
+    const rivi = (teksti, valittu, y) => {
+      const nuoli = valittu && vilkkuu ? "▶ " : "   ";
+      const vari = valittu ? (uusiVahvistus ? "#ff8080" : "gold") : "#ccc";
+      reunaTeksti(nuoli + teksti, canvas.width / 2, y, valittu ? 22 : 18, "center", vari);
+    };
+    rivi(jatka, alkuValinta === "jatka", 314);
+    rivi(uusi, alkuValinta === "uusi", 342);
+  }
+
+  // Vilkkuva ohje (jos tallennusta ei ole)
+  if (!tallennus && Math.floor(aika / 500) % 2 === 0) {
     reunaTeksti(
       ohje("Paina VÄLILYÖNTIÄ aloittaaksesi", "Napauta ruutua aloittaaksesi"),
       canvas.width / 2,
@@ -2775,23 +2935,29 @@ function piirraAloitusruutu(aika) {
     ohjeet = [
       "Pelaaja 1 (vihreä): liiku A D, hyppää W, tulipallo F",
       "Pelaaja 2 (sininen): liiku ← →, hyppää ↑, tulipallo L tai Enter",
-      "Sydän herättää haamukaverin!   Äänet: M   Alusta: R   Kartalle: Esc",
+      "Sydän herättää haamukaverin!   Äänet: M   Maailma alusta: R   Kartalle: Esc",
     ];
   } else if (kosketusOhjaus) {
     ohjeet = [
       "Liiku: ◀ ▶   Hyppää: ⬆ (pidä pohjassa = korkeampi hyppy)",
-      "Tulipallo: 🔥   Kartalle: ☰   Kenttä alusta: ↻   Äänet: 🔊",
+      "Tulipallo: 🔥   Kartalle: ☰   Maailma alusta: ↻   Äänet: 🔊",
       "Hyppää vihujen päälle tai ammu ne tulipallolla!",
     ];
   } else {
     ohjeet = [
       "Liiku: ← →   Hyppää: ↑ / välilyönti (pidä pohjassa = korkeampi hyppy)",
-      "Tulipallo: X   Äänet: M   Kenttä alusta: R   Kartalle: Esc",
+      "Tulipallo: X   Äänet: M   Maailma alusta: R   Kartalle: Esc",
       "Hyppää vihujen päälle tai ammu ne tulipallolla!",
     ];
   }
+  if (tallennus) {
+    // Valikko vie tilaa, joten näytetään valintaohje ja kaksi ohjeriviä
+    const valintaOhje = ohje("↑ ↓ valitse   VÄLILYÖNTI aloittaa", "◀ ▶ valitse   napauta ruutua aloittaaksesi");
+    ohjeet = [valintaOhje, ohjeet[0], ohjeet[1]];
+  }
   for (let i = 0; i < ohjeet.length; i++) {
-    reunaTeksti(ohjeet[i], canvas.width / 2, 355 + i * 24, 16, "center");
+    const y = tallennus ? 370 + i * 22 : 355 + i * 24;
+    reunaTeksti(ohjeet[i], canvas.width / 2, y, 16, "center");
   }
 
   if (TESTITILA && !kosketusOhjaus) {
@@ -2904,8 +3070,9 @@ function piirra(aika) {
       "gold",
     );
     piirraEnnatys(320, aika);
+    const maailma = "maailma " + (maailmanNumero(kenttaNumero) + 1);
     reunaTeksti(
-      ohje("Paina R pelataksesi uudelleen", "Napauta pelataksesi uudelleen"),
+      ohje("Paina R: " + maailma + " alkaa alusta", "Napauta: " + maailma + " alkaa alusta"),
       canvas.width / 2,
       390,
       24,
