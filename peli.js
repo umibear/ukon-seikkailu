@@ -59,7 +59,9 @@ const POMON_RYNTAYS = 5; // kuinka kovaa pomo ryntää
 
 // Haetaan canvas, johon peli piirretään
 const canvas = document.getElementById("peli");
-const ctx = canvas.getContext("2d");
+// alpha: false = ruutu ei ole läpinäkyvä (peli piirtää aina koko ruudun),
+// jolloin selaimen ei tarvitse sekoittaa sitä taustan kanssa. Nopeampaa kännykällä!
+const ctx = canvas.getContext("2d", { alpha: false });
 
 // Pikselitaide näyttää terävältä vain, kun pehmennys on pois päältä
 ctx.imageSmoothingEnabled = false;
@@ -706,6 +708,7 @@ function aloitaKentta(numero) {
   }
   tila = "peli";
   aloitaSaa();
+  valmisteleKentanKuvat(); // isot kuvat valmiiksi heti alussa (valmiskuvat.js)
   aloitaSiirtyma();
 }
 
@@ -2256,12 +2259,10 @@ function reunaTeksti(teksti, x, y, koko, tasaus, vari) {
 function piirraTausta(aika) {
   const varit = kentta.varit;
 
-  // Taivas: liukuväri ylhäältä alas
-  const taivas = ctx.createLinearGradient(0, 0, 0, canvas.height);
-  taivas.addColorStop(0, varit.taivasYla);
-  taivas.addColorStop(1, varit.taivasAla);
-  ctx.fillStyle = taivas;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  // Taivas: liukuväri ylhäältä alas (valmiskuvat.js)
+  ctx.imageSmoothingEnabled = true; // venytetty liukuväri pysyy pehmeänä
+  ctx.drawImage(taivasKuva(varit.taivasYla, varit.taivasAla), 0, 0, canvas.width, canvas.height);
+  ctx.imageSmoothingEnabled = false;
   piirraTahdet(aika);
 
   // Luolassa ei näy aurinkoa eikä pilviä, vain mäet (luolan seinät)
@@ -2298,16 +2299,21 @@ function piirraAurinkoJaPilvet(aika) {
 // kameran mukana (1 = yhtä nopeasti kuin kenttä, 0 = ei ollenkaan)
 function piirraMaet(vari, leveys, korkeus, nopeus, siirto) {
   const vali = 300; // mäkien väli
-  const alku = -((kameraX * nopeus + siirto) % vali) - vali;
-  ctx.fillStyle = vari;
-  for (let x = alku; x < canvas.width + vali; x += vali) {
-    ctx.beginPath();
-    ctx.ellipse(x, 450, leveys, korkeus, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
+  const alku = -((kameraX * nopeus + siirto) % vali) - vali; // ensimmäisen mäen keskikohta
+  // Mäkirivi on piirretty valmiiksi (valmiskuvat.js), joten se vain siirretään paikalleen
+  ctx.imageSmoothingEnabled = true; // mäet liukuvat pehmeästi
+  ctx.drawImage(maetKuva(vari, leveys, korkeus, vali), alku - leveys, canvas.height - korkeus);
+  ctx.imageSmoothingEnabled = false;
 }
 
 function piirraTaso(t) {
+  // Taso on piirretty valmiiksi (valmiskuvat.js), joten se vain kopioidaan
+  const valmis = tasonKuva(t);
+  if (valmis) {
+    ctx.drawImage(valmis, t.x, t.y);
+    return;
+  }
+  // Kuvat eivät ole vielä latautuneet: piirretään laatta kerrallaan
   const laatta = 16 * ZOOM; // yhden laatan koko ruudulla
 
   // "Leikataan" piirtoalue tason kokoiseksi, ettei laattoja piirry yli reunojen
@@ -2452,12 +2458,13 @@ function piirraPelaaja(aika) {
   if (pelaaja.haamu) {
     // Haamu on läpinäkyvä, vaalea ja leijuu ylös alas
     ctx.globalAlpha = 0.45;
-    ctx.filter = "grayscale(1) brightness(1.8)";
     ctx.translate(0, Math.sin(aika / 300) * 4);
   }
   ctx.translate(jalatX, jalatY);
   ctx.scale(1 - pelaaja.venytys * 0.6, 1 + pelaaja.venytys);
-  piirraRuutu(kuva, ruutu, 32, 32, x - jalatX, y - jalatY, peilaa);
+  // Haamu on harmaa ja vaalea (suodatettu kuva on laskettu valmiiksi, valmiskuvat.js)
+  const piirrettava = pelaaja.haamu ? suodatettu(kuva, "grayscale(1) brightness(1.8)") : kuva;
+  piirraRuutu(piirrettava, ruutu, 32, 32, x - jalatX, y - jalatY, peilaa);
   ctx.restore();
 
   // Kaksinpelissä pään yläpuolella on pelaajan numero
@@ -2490,7 +2497,6 @@ function piirraUusiVihu(v, aika) {
   ctx.save();
   if (!v.elossa && v.palanut) {
     ctx.globalAlpha = v.kuolinAika / 40;
-    ctx.filter = "brightness(0.2)";
   } else if (!v.elossa) {
     // Litistynyt: matala lytty maassa
     ctx.drawImage(kuva, 0, 0, 16, 16, x, v.lattia - 10, 32, 10);
@@ -2498,7 +2504,8 @@ function piirraUusiVihu(v, aika) {
     return;
   }
   // Piikkiksen kuva katsoo vasemmalle, joten oikealle mennessä peilataan
-  piirraRuutu(kuva, ruutu, 16, 16, x, y, v.suunta === 1);
+  const piirrettava = !v.elossa && v.palanut ? suodatettu(kuva, "brightness(0.2)") : kuva; // palanut = melkein musta
+  piirraRuutu(piirrettava, ruutu, 16, 16, x, y, v.suunta === 1);
   ctx.restore();
 }
 
@@ -2526,15 +2533,13 @@ function piirraTippuja(v, aika) {
 
   ctx.save();
   if (!v.elossa) {
-    if (v.palanut) {
-      ctx.globalAlpha = Math.max(0, v.kuolinAika / 40);
-      ctx.filter = "brightness(0.2)";
-    }
+    if (v.palanut) ctx.globalAlpha = Math.max(0, v.kuolinAika / 40);
     // Tuhottu hämähäkki putoaa ylösalaisin
     ctx.translate(0, y * 2 + 32);
     ctx.scale(1, -1);
   }
-  piirraRuutu(kuvat.tippuja, ruutu, 16, 16, x, y, false);
+  const kuva = !v.elossa && v.palanut ? suodatettu(kuvat.tippuja, "brightness(0.2)") : kuvat.tippuja;
+  piirraRuutu(kuva, ruutu, 16, 16, x, y, false);
   ctx.restore();
 }
 
@@ -2547,16 +2552,14 @@ function piirraRyomija(v, aika) {
   const y = v.y - 3;
 
   ctx.save();
-  if (!v.elossa && v.palanut) {
-    ctx.globalAlpha = Math.max(0, v.kuolinAika / 40);
-    ctx.filter = "brightness(0.2)";
-  }
+  if (!v.elossa && v.palanut) ctx.globalAlpha = Math.max(0, v.kuolinAika / 40);
   // Käännetään ylösalaisin, kun gekko menee alas (tai kun se on tuhottu)
   if (v.suunta === 1 || !v.elossa) {
     ctx.translate(0, y * 2 + 32);
     ctx.scale(1, -1);
   }
-  piirraRuutu(kuvat.ryomija, v.elossa ? ruutu : 0, 16, 16, x, y, peilaa);
+  const kuva = !v.elossa && v.palanut ? suodatettu(kuvat.ryomija, "brightness(0.2)") : kuvat.ryomija;
+  piirraRuutu(kuva, v.elossa ? ruutu : 0, 16, 16, x, y, peilaa);
   ctx.restore();
 }
 
@@ -2566,6 +2569,7 @@ function piirraViholliset(aika) {
 
   piirraTulivihujenAmmukset(aika); // laavajäljet ja tulisylyt (tulivihut.js)
   for (const v of kentta.viholliset) {
+    if (!naytolla(v.x, v.leveys || 32)) continue; // ruudun ulkopuolella olevia ei piirretä
     if (v.tyyppi === "laavapallo") {
       piirraLaavapallo(v, aika); // tulivuori.js
       continue;
@@ -2602,9 +2606,8 @@ function piirraViholliset(aika) {
     } else if (v.kuolinAika > 0 && v.palanut) {
       // Palanut vihu: muuttuu mustaksi ja haalenee pois
       ctx.globalAlpha = v.kuolinAika / 40; // 1 = näkyy kokonaan, 0 = näkymätön
-      ctx.filter = "brightness(0.2)"; // tummennetaan kuva melkein mustaksi
-      piirraRuutu(kuvat.vihu, 0, 32, 32, x, v.lattia - kuvanKorkeus, false);
-      ctx.filter = "none";
+      const tumma = suodatettu(kuvat.vihu, "brightness(0.2)"); // tummennettu kuva, melkein musta
+      piirraRuutu(tumma, 0, 32, 32, x, v.lattia - kuvanKorkeus, false);
       ctx.globalAlpha = 1;
     } else if (v.kuolinAika > 0) {
       // Litistynyt vihu: piirretään matalaksi lytyksi
@@ -2639,10 +2642,10 @@ function piirraViholliset(aika) {
       // Tuhottu lentovihu putoaa ylösalaisin
       ctx.save();
       ctx.globalAlpha = Math.min(1, v.kuolinAika / 20);
-      if (v.palanut) ctx.filter = "brightness(0.2)";
+      const kuva = v.palanut ? suodatettu(kuvat.lentovihu, "brightness(0.2)") : kuvat.lentovihu;
       ctx.translate(x, y + 32 * ZOOM);
       ctx.scale(1, -1); // -1 kääntää kuvan ylösalaisin
-      piirraRuutu(kuvat.lentovihu, 0, 32, 32, 0, 0, peilaa);
+      piirraRuutu(kuva, 0, 32, 32, 0, 0, peilaa);
       ctx.restore();
     }
   }
@@ -2688,12 +2691,12 @@ function piirraPomo(aika) {
   ctx.save();
   if (!p.elossa) {
     ctx.globalAlpha = Math.max(0, p.kuolinAika / 120); // haalenee pois
-  } else if (p.kipu > 30) {
-    ctx.filter = "brightness(2.5)"; // välähtää valkoisena heti osuman jälkeen
   }
+  // Heti osuman jälkeen pomo välähtää valkoisena
+  const kuva = p.elossa && p.kipu > 30 ? suodatettu(kuvat.isaukko, "brightness(2.5)") : kuvat.isaukko;
   // Nukkumiskuvaa ei peilata, jotta pää on aina samalla puolella
   const peilaa = ruutu !== 8 && p.suunta === 1;
-  piirraRuutu(kuvat.isaukko, ruutu, 64, 64, x, y, peilaa);
+  piirraRuutu(kuva, ruutu, 64, 64, x, y, peilaa);
   ctx.restore();
 
   // Punainen huutomerkki varoittaa ryntäyksestä ja hypystä
@@ -2769,9 +2772,9 @@ function piirraPomonPalkki() {
 
 function piirraLippu(lippu, aika, harmaa) {
   const ruutu = Math.floor(aika / 300) % 2; // lippu liehuu
-  if (harmaa) ctx.filter = "grayscale(1)"; // harmaa = ei vielä aktivoitu
+  // harmaa = ei vielä aktivoitu (harmaa kuva on laskettu valmiiksi, valmiskuvat.js)
   piirraRuutu(
-    kuvat.lippu,
+    harmaa ? suodatettu(kuvat.lippu, "grayscale(1)") : kuvat.lippu,
     ruutu,
     16,
     32,
@@ -2779,7 +2782,6 @@ function piirraLippu(lippu, aika, harmaa) {
     lippu.lattia - 32 * ZOOM,
     false,
   );
-  ctx.filter = "none";
 }
 
 function piirraHiukkaset() {
@@ -2797,6 +2799,13 @@ function piirraHiukkaset() {
   ctx.globalAlpha = 1;
 }
 
+// Näkyykö kohta x...x+leveys ruudulla? Ruudun ulkopuolella olevia asioita
+// ei kannata piirtää, koska kukaan ei näe niitä (vara = hehkut ym. reunan yli).
+function naytolla(x, leveys, vara) {
+  if (vara === undefined) vara = 120;
+  return x + leveys > kameraX - vara && x < kameraX + canvas.width + vara;
+}
+
 // Piirtää kentän ja kaiken siinä olevan
 function piirraMaailma(aika) {
   piirraTausta(aika);
@@ -2808,12 +2817,12 @@ function piirraMaailma(aika) {
 
   piirraLaavat(aika); // tulivuori.js
   for (const t of kentta.tasot) {
-    if (!t.eiPiirreta) piirraTaso(t);
+    if (!t.eiPiirreta && naytolla(t.x, t.leveys)) piirraTaso(t);
   }
   piirraTulisuihkut(aika);
   piirraTykitJaKuulat(aika);
-  for (const t of kentta.liikkuvatTasot) piirraLiikkuvaTaso(t);
-  for (const t of kentta.putoavatTasot) piirraPutoavaTaso(t);
+  for (const t of kentta.liikkuvatTasot) if (naytolla(t.x, t.leveys)) piirraLiikkuvaTaso(t);
+  for (const t of kentta.putoavatTasot) if (naytolla(t.x, t.leveys)) piirraPutoavaTaso(t);
   for (const j of kentta.jouset) {
     // Jousen kuvassa yläreuna on rivillä 3, siksi kuvaa siirretään ylös
     piirraRuutu(kuvat.jousi, j.painuma > 0 ? 1 : 0, 16, 16, j.x - 2, j.lattia - 32, false);
@@ -2823,7 +2832,7 @@ function piirraMaailma(aika) {
   // Kolikot pyörivät (ruutu vaihtuu) ja keinuvat ylös alas
   const kolikonRuutu = Math.floor(aika / 200) % 2;
   for (const k of kentta.kolikot) {
-    if (k.keratty) continue;
+    if (k.keratty || !naytolla(k.x, k.leveys)) continue;
     const keinunta = Math.sin(aika / 300 + k.x) * 3;
     hehku(k.x + 10, k.y + 10 + keinunta, 22, "255, 220, 80", 0.35);
     ctx.drawImage(
@@ -2841,7 +2850,7 @@ function piirraMaailma(aika) {
 
   // Sydämet sykkivät ja keinuvat
   for (const sydan of kentta.sydamet) {
-    if (sydan.keratty) continue;
+    if (sydan.keratty || !naytolla(sydan.x, sydan.leveys)) continue;
     const keskiX = sydan.x + sydan.leveys / 2;
     const keskiY = sydan.y + sydan.korkeus / 2 + Math.sin(aika / 400) * 4;
     const syke = 1 + Math.max(0, Math.sin(aika / 150)) * 0.15; // sydän sykkii
@@ -2889,7 +2898,7 @@ function piirraMaailma(aika) {
   }
 
   if (tila !== "alku") piirraPelaajat(aika);
-  for (const l of kentta.salaisetLuolat) piirraLuola(l);
+  for (const l of kentta.salaisetLuolat) if (naytolla(l.x, l.leveys)) piirraLuola(l);
   piirraHiukkaset();
 
   // Lopetetaan kameran siirto: pisteet ja tekstit pysyvät paikallaan ruudulla

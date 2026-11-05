@@ -240,21 +240,24 @@ function piirraTulivihu(v, aika) {
   if (!v.elossa) {
     // Kuollut vihu haalenee pois. Litistetty vihu painuu matalaksi.
     ctx.globalAlpha = Math.max(0, v.kuolinAika / 40);
-    if (v.palanut) ctx.filter = "brightness(0.2)";
-    else {
+    if (!v.palanut) {
       ctx.translate(0, v.lattia);
       ctx.scale(1, 0.4);
       ctx.translate(0, -v.lattia);
     }
   }
 
+  // Palanut vihu on melkein musta (tumma kuva lasketaan valmiiksi, valmiskuvat.js)
+  const tumma = !v.elossa && v.palanut;
+  const kuvaksi = (kuva) => (tumma ? suodatettu(kuva, "brightness(0.2)") : kuva);
+
   if (v.tyyppi === "kekale") {
     if (v.elossa) hehku(v.x + 13, v.y + 13, 34, "255, 120, 0", 0.25 + Math.sin(aika / 120) * 0.1);
-    piirraRuutu(tulivihuKuvat.kekale, v.elossa ? ruutu : 0, 16, 16, v.x - 3, v.lattia - 30, peilaa);
+    piirraRuutu(kuvaksi(tulivihuKuvat.kekale), v.elossa ? ruutu : 0, 16, 16, v.x - 3, v.lattia - 30, peilaa);
   } else if (v.tyyppi === "kipina") {
-    piirraKipina(v, aika);
+    piirraKipina(v, aika, tumma);
   } else if (v.tyyppi === "laavaetana") {
-    piirraRuutu(tulivihuKuvat.laavaetana, v.elossa ? ruutu : 0, 16, 16, v.x - 1, v.lattia - 30, peilaa);
+    piirraRuutu(kuvaksi(tulivihuKuvat.laavaetana), v.elossa ? ruutu : 0, 16, 16, v.x - 1, v.lattia - 30, peilaa);
   } else if (v.tyyppi === "salamanteri") {
     let kuva = v.elossa ? ruutu : 0;
     if (v.tila === "valmistautuu" || v.tila === "sylkee") kuva = 2;
@@ -264,21 +267,22 @@ function piirraTulivihu(v, aika) {
       const suu = v.suunta === 1 ? v.x + v.leveys + 2 : v.x - 2;
       hehku(suu, v.lattia - 16, 10 + (35 - v.ajastin), "255, 140, 0", 0.5);
     }
-    piirraRuutu(tulivihuKuvat.salamanteri, kuva, 24, 12, x, v.lattia - 24, peilaa);
+    piirraRuutu(kuvaksi(tulivihuKuvat.salamanteri), kuva, 24, 12, x, v.lattia - 24, peilaa);
   }
   ctx.restore();
 }
 
 // Kipinä on pieni lepattava liekki, jolla on silmät
-function piirraKipina(v, aika) {
+// tumma = palanut kipinä on melkein musta (värit ovat viidesosa normaalista)
+function piirraKipina(v, aika, tumma) {
   const lepatus = Math.floor(aika / 80 + v.x) % 2;
   const x = Math.round(v.x);
   const y = Math.round(v.y);
-  hehku(x + 7, y + 7, 22, "255, 150, 0", 0.4);
-  ctx.fillStyle = "#ff5a00";
+  if (!tumma) hehku(x + 7, y + 7, 22, "255, 150, 0", 0.4);
+  ctx.fillStyle = tumma ? "#331200" : "#ff5a00";
   ctx.fillRect(x, y + 4, 14, 10);
   ctx.fillRect(x + 2 + lepatus * 2, y, 8, 4);
-  ctx.fillStyle = "#ffd23c";
+  ctx.fillStyle = tumma ? "#332a0c" : "#ffd23c";
   ctx.fillRect(x + 3, y + 6, 8, 6);
   ctx.fillStyle = "black";
   const silma = v.suunta === 1 ? 6 : 3;

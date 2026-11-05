@@ -178,74 +178,69 @@ function piirraSaa() {
 // joten ne näyttävät olevan kaukana.
 function piirraKuuset(vari) {
   if (!vari) return;
-  const vali = 70;
+  const vali = KUUSIEN_VALI;
   const nopeus = 0.7;
   const siirto = kameraX * nopeus;
   const ensimmainen = Math.floor(siirto / vali) - 1;
+  const viimeinen = ensimmainen + Math.ceil(canvas.width / vali) + 3;
 
-  ctx.fillStyle = vari;
-  for (let i = ensimmainen; i < ensimmainen + canvas.width / vali + 3; i++) {
-    const x = i * vali - siirto;
-    // Jokainen kuusi on eri korkuinen. Math.sin antaa "satunnaisen"
-    // luvun, joka on samalle kuuselle aina sama.
-    const korkeus = 60 + Math.abs(Math.sin(i * 12.9898)) * 60;
-    const leveys = korkeus * 0.4;
-    const pohja = 415;
-    // Kuusi tehdään kolmesta päällekkäisestä kolmiosta
-    for (let kerros = 0; kerros < 3; kerros++) {
-      const alaosa = pohja - kerros * korkeus * 0.28;
-      const huippu = alaosa - korkeus * 0.45;
-      const l = leveys * (1 - kerros * 0.25);
-      ctx.beginPath();
-      ctx.moveTo(x - l, alaosa);
-      ctx.lineTo(x, huippu);
-      ctx.lineTo(x + l, alaosa);
-      ctx.closePath();
-      ctx.fill();
-    }
-  }
+  // Kuusirivi on piirretty valmiiksi (valmiskuvat.js). Kopioidaan siitä
+  // ruudun levyinen pala oikeasta kohdasta.
+  const rivi = kuusetKuva(vari, ensimmainen, viimeinen);
+  const kohta = siirto - (rivi.alku - 1) * vali; // missä kohtaa riviä ruudun vasen reuna on
+  ctx.imageSmoothingEnabled = true; // kuuset liukuvat pehmeästi
+  ctx.drawImage(
+    rivi.canvas,
+    kohta, 0, canvas.width, KUUSIEN_KORKEUS, // mistä kohtaa riviä
+    0, KUUSIEN_POHJA - KUUSIEN_KORKEUS, canvas.width, KUUSIEN_KORKEUS, // mihin ruudulle
+  );
+  ctx.imageSmoothingEnabled = false;
 }
 
 // ---------- HEHKU ----------
 // Piirtää pehmeän valopallon. vari on muotoa "255, 140, 0" (punainen, vihreä, sininen).
+// Valopallo on piirretty valmiiksi (valmiskuvat.js), joten se vain kopioidaan.
 function hehku(x, y, sade, vari, voimakkuus) {
-  const liuku = ctx.createRadialGradient(x, y, 0, x, y, sade);
-  liuku.addColorStop(0, "rgba(" + vari + ", " + voimakkuus + ")");
-  liuku.addColorStop(1, "rgba(" + vari + ", 0)");
-  ctx.save();
+  if (sade <= 0 || voimakkuus <= 0) return;
+  // Pyöristetään vähän, ettei jokaiselle pienelle erolle tarvitse omaa kuvaa
+  const valmis = hehkuKuva(vari, Math.ceil(sade), Math.round(voimakkuus * 50) / 50);
+  const vanha = ctx.globalCompositeOperation;
   ctx.globalCompositeOperation = "lighter"; // valot lisätään päälle, eivät peitä
-  ctx.fillStyle = liuku;
-  ctx.fillRect(x - sade, y - sade, sade * 2, sade * 2);
-  ctx.restore();
+  ctx.drawImage(valmis, x - sade, y - sade, sade * 2, sade * 2);
+  ctx.globalCompositeOperation = vanha;
 }
 
 // ---------- PIMEYS JA VALOT ----------
 // Pimeys piirretään erilliselle "piilocanvasille". Siihen leikataan
 // reikiä valojen kohdalle, ja lopuksi se piirretään pelin päälle.
+// Pimeys lasketaan puolella tarkkuudella ja venytetään ruudun kokoiseksi.
+// Valot ovat pehmeitä, joten eroa ei näe, mutta kännykällä se on 4 kertaa nopeampaa.
+const PIMEYDEN_TARKKUUS = 0.5;
 let pimeysCanvas = null;
 
 function piirraPimeys(aika) {
   if (!kentta.pimeys) return;
   if (!pimeysCanvas) {
     pimeysCanvas = document.createElement("canvas");
-    pimeysCanvas.width = canvas.width;
-    pimeysCanvas.height = canvas.height;
+    pimeysCanvas.width = canvas.width * PIMEYDEN_TARKKUUS;
+    pimeysCanvas.height = canvas.height * PIMEYDEN_TARKKUUS;
   }
   const pc = pimeysCanvas.getContext("2d");
-  pc.globalCompositeOperation = "source-over";
-  pc.clearRect(0, 0, canvas.width, canvas.height);
+  // Piirretään samoilla koordinaateilla kuin isolle ruudulle, pienennettynä
+  pc.setTransform(PIMEYDEN_TARKKUUS, 0, 0, PIMEYDEN_TARKKUUS, 0, 0);
+  pc.globalCompositeOperation = "copy"; // "copy" korvaa vanhan kuvan kokonaan
   pc.fillStyle = "rgba(5, 0, 25, " + kentta.pimeys + ")";
   pc.fillRect(0, 0, canvas.width, canvas.height);
 
   // "destination-out" pyyhkii pimeyttä pois valojen kohdalta
   pc.globalCompositeOperation = "destination-out";
+  // Valo on valmiiksi piirretty pehmeä pallo (valmiskuvat.js), joka venytetään oikean kokoiseksi
+  const leima = haeValoLeima();
+  pc.imageSmoothingEnabled = true;
   const valo = (x, y, sade) => {
     const ruutuX = x - kameraX;
-    const liuku = pc.createRadialGradient(ruutuX, y, 0, ruutuX, y, sade);
-    liuku.addColorStop(0, "rgba(0, 0, 0, 1)");
-    liuku.addColorStop(1, "rgba(0, 0, 0, 0)");
-    pc.fillStyle = liuku;
-    pc.fillRect(ruutuX - sade, y - sade, sade * 2, sade * 2);
+    if (ruutuX + sade < 0 || ruutuX - sade > canvas.width || sade <= 0) return; // ei näy ruudulla
+    pc.drawImage(leima, ruutuX - sade, y - sade, sade * 2, sade * 2);
   };
 
   for (const pl of pelaajat) {
@@ -266,7 +261,9 @@ function piirraPimeys(aika) {
     valo(kentta.valitallennus.x + 10, kentta.valitallennus.y + 20, 90);
   }
 
-  ctx.drawImage(pimeysCanvas, 0, 0);
+  ctx.imageSmoothingEnabled = true; // venytys pehmeästi, ei pikseleinä
+  ctx.drawImage(pimeysCanvas, 0, 0, canvas.width, canvas.height);
+  ctx.imageSmoothingEnabled = false;
 }
 
 // ---------- PÄIVITYS ----------
