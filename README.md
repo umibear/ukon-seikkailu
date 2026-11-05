@@ -13,7 +13,9 @@ Toimii tietokoneella ja kännykän selaimessa.
 | Liiku | ← → tai A D | ◀ ▶ |
 | Hyppää (pidä pohjassa = korkeampi hyppy) | ↑, W tai välilyönti | ⬆ |
 | Tulipallo | X | 🔥 |
-| Tauko / maailma alusta (paina 2 kertaa) / äänet | Esc / R / M | ☰ / ↻ / 🔊 |
+| Tauko / maailma alusta (paina 2 kertaa) / äänet | Esc / R / M | ⚙️ → ⏸ / ↻ / 🔊 |
+| FPS-mittari (ruutuja sekunnissa) | F3 | ⚙️ → 📊 |
+| Nappien koko | – | ⚙️ → 🔍 |
 
 **Kaksinpeli** (tietokoneella): valitse alkuvalikosta **Pelaajat: 2**.
 Pelaaja 1: A D W + F, pelaaja 2: ← → ↑ + L tai Enter.
@@ -23,6 +25,8 @@ Pelaaja 1: A D W + F, pelaaja 2: ← → ↑ + L tai Enter.
 Peli on tehty tavallisella JavaScriptillä ilman kirjastoja. Kuvat on piirretty pikseli kerrallaan.
 Jokaisella kentällä on oma kappale. Nuotit ovat tiedostossa `musiikki.js`, ja niitä voi muokata itse.
 Musiikin saa pois taukovalikosta (Esc / ☰).
+
+Nopeuden voi mitata: `node testit/suorituskyky.js`
 Kansiossa `testit/` on botti, joka kokeilee, pääseekö kentät läpi: `node testit/botti.js 7`
 
 ## Lisenssi

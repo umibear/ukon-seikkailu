@@ -288,10 +288,12 @@ addEventListener("keydown", (e) => {
       }
     }
     if (e.code === "KeyM") aanetPaalla = !aanetPaalla; // ! kääntää true <-> false
+    if (e.code === "F3") vaihdaFps(); // FPS-mittari päälle / pois
   }
 
   // Estetään nuolinäppäimiä ja välilyöntiä vierittämästä sivua
-  if (e.code.startsWith("Arrow") || e.code === "Space" || e.code === "Enter") e.preventDefault();
+  // (F3 avaisi muuten selaimen haun)
+  if (e.code.startsWith("Arrow") || e.code === "Space" || e.code === "Enter" || e.code === "F3") e.preventDefault();
 });
 
 addEventListener("keyup", (e) => {
@@ -2246,14 +2248,21 @@ function piirraSuruNaama(x, y) {
 // Kirjoittaa tekstin, jolla on musta reuna (näkyy hyvin joka taustalla)
 // vari on vapaaehtoinen: jos sitä ei anneta, teksti on valkoinen
 function reunaTeksti(teksti, x, y, koko, tasaus, vari) {
-  ctx.font = "bold " + koko + "px sans-serif";
-  ctx.textAlign = tasaus;
-  ctx.lineWidth = Math.max(3, koko / 6);
-  ctx.lineJoin = "round"; // pyöreät kulmat, ettei kirjaimiin (esim. M) tule piikkejä
-  ctx.strokeStyle = "black";
-  ctx.fillStyle = vari || "white"; // || = "tai": jos väriä ei ole, käytetään valkoista
-  ctx.strokeText(teksti, x, y);
-  ctx.fillText(teksti, x, y);
+  // Useimmiten teksti on piirretty jo valmiiksi (valmiskuvat.js), ja se vain kopioidaan
+  if (piirraValmisTeksti(String(teksti), x, y, koko, tasaus, vari || "white")) return;
+  piirraTekstiReunalla(ctx, teksti, x, y, koko, tasaus, vari);
+}
+
+// Piirtää tekstin, jolla on musta reunaviiva (c = mihin piirretään)
+function piirraTekstiReunalla(c, teksti, x, y, koko, tasaus, vari) {
+  c.font = "bold " + koko + "px sans-serif";
+  c.textAlign = tasaus;
+  c.lineWidth = Math.max(3, koko / 6);
+  c.lineJoin = "round"; // pyöreät kulmat, ettei kirjaimiin (esim. M) tule piikkejä
+  c.strokeStyle = "black";
+  c.fillStyle = vari || "white"; // || = "tai": jos väriä ei ole, käytetään valkoista
+  c.strokeText(teksti, x, y);
+  c.fillText(teksti, x, y);
 }
 
 function piirraTausta(aika) {
@@ -2354,13 +2363,19 @@ function piirraLuola(l) {
 
   ctx.save();
   ctx.globalAlpha = l.nakyvyys;
-  ctx.beginPath();
-  ctx.rect(l.x, l.y, l.leveys, l.korkeus);
-  ctx.clip();
-  for (let y = l.y; y < l.y + l.korkeus; y += laatta) {
-    for (let x = l.x; x < l.x + l.leveys; x += laatta) {
-      const kuva = laattaKuva(y === l.y);
-      ctx.drawImage(kuva, x, y, laatta, laatta);
+  // Kallion laatat on piirretty valmiiksi (valmiskuvat.js)
+  const valmis = tasonKuva(l, false);
+  if (valmis) {
+    ctx.drawImage(valmis, l.x, l.y);
+  } else {
+    ctx.beginPath();
+    ctx.rect(l.x, l.y, l.leveys, l.korkeus);
+    ctx.clip();
+    for (let y = l.y; y < l.y + l.korkeus; y += laatta) {
+      for (let x = l.x; x < l.x + l.leveys; x += laatta) {
+        const kuva = laattaKuva(y === l.y);
+        ctx.drawImage(kuva, x, y, laatta, laatta);
+      }
     }
   }
 
@@ -3138,10 +3153,10 @@ function piirraOhjeet() {
       ["Liiku", "◀  ▶"],
       ["Hyppää", "⬆   (pidä pohjassa = korkeampi hyppy)"],
       ["Tulipallo", "🔥"],
-      ["Tauko", "☰"],
-      ["Maailma alusta", "↻  kaksi kertaa"],
-      ["Äänet päälle / pois", "🔊"],
-      ["Nappien koko", "🔍"],
+      ["Lisää nappeja", "⚙️  avaa ja sulkee:"],
+      ["", "⏸ tauko    ↻ maailma alusta (2 kertaa)"],
+      ["", "🔊 äänet    🔍 nappien koko"],
+      ["", "📊 FPS-mittari (ruutuja sekunnissa)"],
     ];
   } else if (kaksinpeli) {
     rivit = [
@@ -3152,6 +3167,7 @@ function piirraOhjeet() {
       ["Tauko", "Esc"],
       ["Maailma alusta", "R  kaksi kertaa"],
       ["Äänet päälle / pois", "M"],
+      ["FPS-mittari", "F3"],
     ];
     vinkki = "Sydän herättää haamukaverin!";
   } else {
@@ -3163,6 +3179,7 @@ function piirraOhjeet() {
       ["Tauko", "Esc"],
       ["Maailma alusta", "R  kaksi kertaa"],
       ["Äänet päälle / pois", "M"],
+      ["FPS-mittari", "F3"],
     ];
   }
 
@@ -3180,7 +3197,8 @@ function piirraOhjeet() {
   reunaTeksti("OHJEET", canvas.width / 2, y + 48, 34, "center", "gold");
   const raja = 330; // tästä vasemmalle selitys, oikealle napit
   for (let i = 0; i < rivit.length; i++) {
-    const rivinY = y + 100 + i * 34;
+    const vali = rivit.length > 7 ? 30 : 34; // monta riviä: vähän tiiviimmin
+    const rivinY = y + 94 + i * vali;
     const [mita, milla, pelaaja2] = rivit[i];
     const otsikkorivi = !mita && pelaaja2; // kaksinpelin "Pelaaja 1  Pelaaja 2"
     if (mita) reunaTeksti(mita, raja - 16, rivinY, 19, "right", "#ffe27a");
@@ -3317,10 +3335,29 @@ function piirra(aika) {
 // Tätä kutsutaan uudestaan ja uudestaan, noin 60 kertaa sekunnissa
 let edellinenAika = performance.now();
 
+// Joissain kännyköissä on 120 Hz näyttö: silloin selain kutsuu silmukkaa
+// 120 kertaa sekunnissa. Peli on tehty 60 ruudulle sekunnissa, joten silloin
+// joka toinen kerta jätetään väliin. Kännykkä tekee puolet vähemmän työtä!
+let edellinenKutsu = 0;
+let kutsujenVali = 1000 / 60; // keskimääräinen aika kutsujen välillä (ms)
+let jokaToinen = false; // true = näyttö on nopea, piirretään joka toinen kerta
+let ohitaTama = false;
+
 function silmukka(nyt) {
   // Seuraava kierros pyydetään heti alussa. Silloin peli jatkuu,
   // vaikka tällä kierroksella tapahtuisi jokin virhe.
   requestAnimationFrame(silmukka);
+
+  // Mitataan, kuinka nopea näyttö on (liukuva keskiarvo)
+  const vali = nyt - edellinenKutsu;
+  edellinenKutsu = nyt;
+  if (vali > 0 && vali < 50) kutsujenVali = kutsujenVali * 0.95 + vali * 0.05;
+  if (kutsujenVali < 9.5) jokaToinen = true; // yli 105 Hz
+  if (kutsujenVali > 12) jokaToinen = false; // alle 83 Hz
+  if (jokaToinen) {
+    ohitaTama = !ohitaTama;
+    if (ohitaTama) return;
+  }
 
   let dt = (nyt - edellinenAika) / (1000 / 60);
   if (dt > 1.5) dt = 1.5; // ettei pelaaja hyppää tasojen läpi, jos kone takkuaa
@@ -3330,6 +3367,49 @@ function silmukka(nyt) {
   paivita(dt);
   paivitaKamera(dt);
   piirra(nyt);
+  if (naytaFps) mittaaFps(nyt);
+}
+
+// ---------- RUUDUT SEKUNNISSA (FPS-mittari) ----------
+// Ruudun alareunassa näkyy, montako ruutua sekunnissa peli piirtää ja kuinka
+// pitkä hitain väli oli. Päälle ja pois: F3 (tietokone) tai ⚙️ → FPS (kännykkä).
+// Myös osoitteen loppuun voi lisätä ?fps
+let naytaFps = location.search.includes("fps") || lataaFpsAsetus();
+const fpsMittari = { ruudut: 0, alku: 0, hitain: 0, edellinen: 0, teksti: "" };
+
+function vaihdaFps() {
+  naytaFps = !naytaFps;
+  // Mittaus alkaa alusta, ettei vanha tulos näy
+  Object.assign(fpsMittari, { ruudut: 0, alku: performance.now(), hitain: 0, edellinen: 0, teksti: "" });
+  try {
+    localStorage.setItem("ukonSeikkailuFps", naytaFps ? "1" : "0");
+  } catch (virhe) {
+    // ei haittaa, valinta vain ei tallennu
+  }
+}
+
+function lataaFpsAsetus() {
+  try {
+    return localStorage.getItem("ukonSeikkailuFps") === "1";
+  } catch (virhe) {
+    return false;
+  }
+}
+
+function mittaaFps(nyt) {
+  const m = fpsMittari;
+  if (m.edellinen) m.hitain = Math.max(m.hitain, nyt - m.edellinen);
+  m.edellinen = nyt;
+  m.ruudut++;
+  if (nyt - m.alku >= 1000) {
+    const fps = Math.round((m.ruudut * 1000) / (nyt - m.alku));
+    const naytto = Math.round(1000 / kutsujenVali);
+    m.teksti = fps + " fps   hitain " + Math.round(m.hitain) + " ms   näyttö " + naytto + " Hz";
+    m.ruudut = 0;
+    m.alku = nyt;
+    m.hitain = 0;
+  }
+  if (m.teksti) reunaTeksti(m.teksti, canvas.width / 2, canvas.height - 8, 14, "center", "#7fff7f");
 }
 
 // Ladataan ensimmäinen kenttä aloitusruudun taustaksi

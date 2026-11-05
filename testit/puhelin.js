@@ -104,23 +104,52 @@ const tarkista = (ehto, teksti) => { if (ehto) { ok++; console.log("✅", teksti
   await odota(50);
   tarkista(await arvo("tulipallot.length") > 0, "🔥 ampuu tulipallon " + JSON.stringify(await arvo("({ tila, tuli: pelaaja1.tuli, x: pelaaja1.x, y: pelaaja1.y, elamat: pelaaja1.elamat, haamu: pelaaja1.haamu })")));
   await kosketa("touchEnd", []);
+  // ⚙️: ruudulla näkyvät vain ohjausnapit ja ⚙️, muut napit ovat sen takana
+  const nakyvat = await arvo("[...document.querySelectorAll('.nappi')].filter((n) => n.getBoundingClientRect().width > 0).map((n) => n.textContent).join(' ')");
+  tarkista(nakyvat === "◀ ▶ 🔥 ⬆ ⚙️", "ruudulla näkyvät vain ohjausnapit ja ⚙️ (" + nakyvat + ")");
+  const asetusnappi = await arvo("(() => { const r = document.getElementById('asetusnappi').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()");
+  // ⚙️ → kohta: avaa asetukset (jos kiinni) ja palauttaa napin keskikohdan
+  const asetus = async (valinta) => {
+    if (!(await arvo("document.body.classList.contains('asetukset-auki')"))) await napauta(asetusnappi.x, asetusnappi.y);
+    return arvo(`(() => { const r = document.querySelector('${valinta}').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`);
+  };
+  await napauta(asetusnappi.x, asetusnappi.y);
+  tarkista(await arvo("document.body.classList.contains('asetukset-auki')"), "⚙️ avaa asetukset");
+  await kuva("3a_asetukset");
+  await napauta(asetusnappi.x, asetusnappi.y);
+  tarkista(!(await arvo("document.body.classList.contains('asetukset-auki')")), "⚙️ uudestaan sulkee asetukset");
+
   const aanet0 = await arvo("aanetPaalla");
-  const aaniNappi = await napinKohta("KeyM");
+  const aaniNappi = await asetus('[data-nappi="KeyM"]');
   await napauta(aaniNappi.x, aaniNappi.y);
-  tarkista(await arvo("aanetPaalla") !== aanet0, "🔊 vaihtaa äänet päälle/pois");
+  tarkista(await arvo("aanetPaalla") !== aanet0, "⚙️ → 🔊 vaihtaa äänet päälle/pois");
+  tarkista(await arvo("document.getElementById('aanikuvake').textContent") === (aanet0 ? "🔇" : "🔊"), "äänikuvake näyttää, ovatko äänet päällä");
   await napauta(aaniNappi.x, aaniNappi.y);
-  const kartalle = await napinKohta("Escape");
+  const fpsNappi = await asetus('[data-toiminto="fps"]');
+  await napauta(fpsNappi.x, fpsNappi.y);
+  tarkista(await arvo("naytaFps") === true && (await arvo("document.querySelector('[data-toiminto=fps]').classList.contains('paalla')")), "⚙️ → 📊 laittaa FPS-mittarin päälle (ja nappi on keltainen)");
+  await odota(1300);
+  tarkista((await arvo("fpsMittari.teksti")).includes("fps"), "FPS-mittari näyttää ruudut sekunnissa (" + (await arvo("fpsMittari.teksti")) + ")");
+  await napauta(fpsNappi.x, fpsNappi.y);
+  tarkista(await arvo("naytaFps") === false, "📊 uudestaan laittaa FPS-mittarin pois");
+  await napauta(422, 200);
+  tarkista(!(await arvo("document.body.classList.contains('asetukset-auki')")), "napautus pelin päälle sulkee asetukset");
+
+  const kartalle = await asetus('[data-nappi="Escape"]');
   await napauta(kartalle.x, kartalle.y);
-  tarkista(await arvo("tila") === "tauko", "☰ avaa taukovalikon");
+  tarkista(await arvo("tila") === "tauko", "⚙️ → ⏸ avaa taukovalikon");
+  tarkista(!(await arvo("document.body.classList.contains('asetukset-auki')")), "tauon alkaessa asetukset sulkeutuvat");
   await kuva("3b_tauko");
   await napautaRivia("jatkaTaukoa");
   tarkista(await arvo("tila") === "peli", "Jatka peliä -napautus jatkaa");
+  await asetus('[data-nappi="Escape"]');
   await napauta(kartalle.x, kartalle.y);
   await napautaRivia("kartalle");
   tarkista(await arvo("tila") === "kartta", "Palaa kartalle -napautus vie kartalle");
   await odota(500);
   await napauta(422, 200);
   await odota(500);
+  await asetus('[data-nappi="Escape"]');
   await napauta(kartalle.x, kartalle.y);
   await napautaRivia("poistu");
   tarkista(await arvo("tila") === "alku", "Poistu pelistä -napautus vie alkuvalikkoon");

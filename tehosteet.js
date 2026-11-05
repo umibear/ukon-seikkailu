@@ -151,6 +151,9 @@ function piirraTahdet(aika) {
 
 // Lumi ja sade piirretään kaiken päälle
 function piirraSaa() {
+  // Kaikki sadepisarat piirretään yhdellä kertaa (nopeampaa kuin yksi kerrallaan)
+  let sataa = false;
+  ctx.beginPath();
   for (const h of saaHiukkaset) {
     // Lähellä oleva lumi liikkuu kameran mukana vähän (parallaksi)
     let x = (h.x - kameraX * 0.6) % canvas.width;
@@ -163,13 +166,15 @@ function piirraSaa() {
       ctx.fillStyle = "white";
       ctx.fillRect(x, h.y, h.koko, h.koko);
     } else {
-      ctx.strokeStyle = "rgba(170, 200, 255, 0.7)";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
       ctx.moveTo(x, h.y);
       ctx.lineTo(x - 3, h.y - 12);
-      ctx.stroke();
+      sataa = true;
     }
+  }
+  if (sataa) {
+    ctx.strokeStyle = "rgba(170, 200, 255, 0.7)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
   }
 }
 

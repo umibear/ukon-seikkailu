@@ -53,6 +53,25 @@ function asetaNappikoko(numero) {
   }
 }
 
+// ---------- ASETUKSET ⚙️ ----------
+// Ruudulla näkyvät vain ohjausnapit ja ⚙️. Muut napit ovat ⚙️:n takana.
+function avaaTaiSuljeAsetukset(auki) {
+  document.body.classList.toggle("asetukset-auki", auki);
+  paivitaAsetusnapit();
+}
+
+function asetuksetAuki() {
+  return document.body.classList.contains("asetukset-auki");
+}
+
+// Napit näyttävät, mikä on päällä: 🔊 / 🔇 ja FPS keltaisena, kun mittari näkyy
+function paivitaAsetusnapit() {
+  const aani = document.getElementById("aanikuvake");
+  if (aani) aani.textContent = aanetPaalla ? "🔊" : "🔇";
+  const fps = document.querySelector('[data-toiminto="fps"]');
+  if (fps) fps.classList.toggle("paalla", naytaFps);
+}
+
 if (kosketusOhjaus) {
   document.body.classList.add("kosketus");
   try {
@@ -84,11 +103,22 @@ if (kosketusOhjaus) {
       e.preventDefault(); // estää zoomauksen ja sivun vierityksen
       kaynnistaAanet();
       koitaKokoRuutua();
+      let suljeLopuksi = false;
       for (const sormi of e.changedTouches) {
-        if (sormi.target.id === "peli") napautaRuutua(sormi);
-        if (sormi.target.id === "kokonappi") asetaNappikoko(nappikoko + 1);
+        const kohde = sormi.target;
+        if (kohde.id === "peli") {
+          avaaTaiSuljeAsetukset(false); // napautus pelin päälle sulkee asetukset
+          napautaRuutua(sormi);
+        }
+        if (kohde.closest("#asetusnappi")) avaaTaiSuljeAsetukset(!asetuksetAuki());
+        const toiminto = kohde.closest("[data-toiminto]");
+        if (toiminto && toiminto.dataset.toiminto === "koko") asetaNappikoko(nappikoko + 1);
+        if (toiminto && toiminto.dataset.toiminto === "fps") vaihdaFps();
+        if (kohde.closest('[data-nappi="Escape"]')) suljeLopuksi = true; // tauko: valikko tulee näkyviin
       }
       paivitaSormet(e);
+      if (suljeLopuksi) avaaTaiSuljeAsetukset(false);
+      paivitaAsetusnapit();
     },
     { passive: false },
   );
@@ -99,6 +129,7 @@ if (kosketusOhjaus) {
         e.preventDefault();
         if (tapahtuma === "touchend") kaynnistaAanet(); // iPhone sallii äänet vasta tästä
         paivitaSormet(e);
+        paivitaAsetusnapit(); // esim. 🔊 vaihtuu 🔇:ksi heti
       },
       { passive: false },
     );

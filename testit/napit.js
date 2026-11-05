@@ -1,4 +1,5 @@
-// Tarkistaa kännykän napit monen kokoisilla ruuduilla ja kaikilla 🔍-ko'oilla:
+// Tarkistaa kännykän napit monen kokoisilla ruuduilla ja kaikilla 🔍-ko'oilla
+// (⚙️-asetukset kiinni ja auki):
 // mikään nappi ei saa mennä toisen päälle eikä ruudun ulkopuolelle.
 // Käyttö: node testit/napit.js
 const { spawn } = require("child_process");
@@ -27,10 +28,14 @@ const odota = (ms) => new Promise((r) => setTimeout(r, ms));
     await komento("Emulation.setDeviceMetricsOverride", { width: w, height: h, deviceScaleFactor: 1, mobile: true });
     await komento("Page.navigate", { url: "file://" + path.join(__dirname, "..", "index.html") });
     await odota(500);
-    for (let koko = 0; koko < 4; koko++) {
+    for (let kokeilu = 0; kokeilu < 8; kokeilu++) {
+      const koko = kokeilu % 4, auki = kokeilu >= 4; // ⚙️-asetukset kiinni ja auki
       const viat = await arvo(`(() => {
         asetaNappikoko(${koko});
-        const napit = [...document.querySelectorAll(".nappi")].map((n) => [n.className, n.getBoundingClientRect()]);
+        document.body.classList.toggle("asetukset-auki", ${auki});
+        // Näkyvät napit. Kun asetukset ovat auki, asetusrivi tarkistetaan yhtenä laatikkona.
+        const napit = [...document.querySelectorAll("#kosketusnapit > .nappi")].map((n) => [n.className, n.getBoundingClientRect()]);
+        if (${auki}) napit.push(["asetukset", document.getElementById("asetukset").getBoundingClientRect()]);
         const viat = [];
         for (const [nimi, a] of napit)
           if (a.left < 0 || a.top < 0 || a.right > innerWidth || a.bottom > innerHeight) viat.push(nimi + " on ruudun ulkopuolella");
@@ -42,7 +47,7 @@ const odota = (ms) => new Promise((r) => setTimeout(r, ms));
         return viat;
       })()`);
       kokeiltu++;
-      if (viat.length) { vikoja++; console.log("❌", w + "x" + h, "koko", koko, viat.join(", ")); }
+      if (viat.length) { vikoja++; console.log("❌", w + "x" + h, "koko", koko, auki ? "(asetukset auki)" : "", viat.join(", ")); }
     }
   }
   console.log(kokeiltu - vikoja + " / " + kokeiltu + " ruutu- ja kokoyhdistelmää ok");

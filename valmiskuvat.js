@@ -118,12 +118,14 @@ const tasoKuvat = new Map();
 // Kännyköissä piilocanvas saa olla korkeintaan 4096 pikseliä leveä
 const SUURIN_KUVA = 4096;
 
-function tasonKuva(t) {
+// reunat = false: ei mustaa reunaviivaa (salaisen luolan kallio)
+function tasonKuva(t, reunat) {
+  if (reunat === undefined) reunat = true;
   if (t.leveys > SUURIN_KUVA || t.korkeus > SUURIN_KUVA) return null; // liian iso: piirretään laatoista
   const ylin = laattaKuva(true);
   const alempi = laattaKuva(false);
   if (!kuvaValmis(ylin) || !kuvaValmis(alempi)) return null;
-  const avain = t.leveys + "x" + t.korkeus + "|" + ylin.src;
+  const avain = t.leveys + "x" + t.korkeus + "|" + ylin.src + "|" + reunat;
   let c = tasoKuvat.get(avain);
   if (!c) {
     if (tasoKuvat.size > 300) tasoKuvat.clear();
@@ -136,13 +138,54 @@ function tasonKuva(t) {
         cc.drawImage(y === 0 ? ylin : alempi, x, y, laatta, laatta);
       }
     }
-    // Musta reunaviiva tason ympärille
-    cc.strokeStyle = "black";
-    cc.lineWidth = 2;
-    cc.strokeRect(1, 1, t.leveys - 2, t.korkeus - 2);
+    if (reunat) {
+      // Musta reunaviiva tason ympärille
+      cc.strokeStyle = "black";
+      cc.lineWidth = 2;
+      cc.strokeRect(1, 1, t.leveys - 2, t.korkeus - 2);
+    }
     tasoKuvat.set(avain, c);
   }
   return c;
+}
+
+// ---------- TEKSTIT ----------
+// Teksti, jolla on musta reunaviiva, on raskas piirtää. Jokainen erilainen
+// teksti piirretään kerran omaan kuvaansa, ja sen jälkeen kuva vain kopioidaan.
+const tekstiKuvat = new Map();
+let tekstinMittari = null; // apuväline tekstin koon mittaamiseen
+
+// Palauttaa false, jos valmista tekstiä ei voi käyttää (silloin piirretään tavalliseen tapaan)
+function piirraValmisTeksti(teksti, x, y, koko, tasaus, vari) {
+  // Valmiin tekstin voi kopioida vain, jos ruutua ei ole venytetty tai käännetty
+  if (!ctx.getTransform) return false;
+  const m = ctx.getTransform();
+  if (m.a !== 1 || m.b !== 0 || m.c !== 0 || m.d !== 1) return false;
+
+  const avain = teksti + "|" + koko + "|" + vari;
+  let k = tekstiKuvat.get(avain);
+  if (!k) {
+    if (!tekstinMittari) tekstinMittari = uusiPiilocanvas(1, 1).getContext("2d");
+    tekstinMittari.font = "bold " + koko + "px sans-serif";
+    const mitat = tekstinMittari.measureText(teksti);
+    if (!(mitat.width > 0) || mitat.actualBoundingBoxAscent === undefined) return false;
+    if (tekstiKuvat.size > 300) tekstiKuvat.clear(); // ettei muisti täyty
+    const reuna = Math.ceil(Math.max(3, koko / 6)) + 2; // tilaa reunaviivalle
+    const vasen = Math.ceil(Math.max(0, mitat.actualBoundingBoxLeft));
+    const oikea = Math.ceil(Math.max(mitat.width, mitat.actualBoundingBoxRight));
+    const yla = Math.ceil(Math.max(mitat.actualBoundingBoxAscent, koko * 0.8));
+    const ala = Math.ceil(Math.max(mitat.actualBoundingBoxDescent, koko * 0.25));
+    const c = uusiPiilocanvas(vasen + oikea + reuna * 2, yla + ala + reuna * 2);
+    piirraTekstiReunalla(c.getContext("2d"), teksti, reuna + vasen, reuna + yla, koko, "left", vari);
+    k = { kuva: c, leveys: mitat.width, x: reuna + vasen, y: reuna + yla };
+    tekstiKuvat.set(avain, k);
+  }
+  // Missä kohtaa tekstin alku on (tasaus: vasen, keskellä tai oikea)
+  let alku = x;
+  if (tasaus === "center") alku = x - k.leveys / 2;
+  if (tasaus === "right") alku = x - k.leveys;
+  ctx.drawImage(k.kuva, Math.round(alku - k.x), Math.round(y - k.y));
+  return true;
 }
 
 // ---------- TAIVAS ----------

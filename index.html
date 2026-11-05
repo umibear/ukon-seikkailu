@@ -84,13 +84,35 @@
     .hyppy  { right: calc(var(--reuna) + env(safe-area-inset-right, 0px)); bottom: var(--ala);
               width: var(--iso); height: var(--iso); font-size: calc(var(--iso) * 0.45); }
     .ammu   { right: calc(var(--reuna) + env(safe-area-inset-right, 0px) + var(--iso) + var(--vali)); bottom: var(--ala); }
-    /* Pienet napit ruudun vasemmassa reunassa */
+    /* Pienet napit: asetusnappi ⚙️ ruudun vasemmassa reunassa */
     .pieni  { width: var(--pieni); height: var(--pieni); font-size: calc(var(--pieni) * 0.45);
               left: calc(var(--reuna) + env(safe-area-inset-left, 0px)); }
-    .kartalle { top: 18vmin; }
-    .alusta   { top: calc(18vmin + var(--pieni) + var(--pieniVali)); }
-    .aanet    { top: calc(18vmin + (var(--pieni) + var(--pieniVali)) * 2); }
-    .koko     { top: calc(18vmin + (var(--pieni) + var(--pieniVali)) * 3); }
+    .asetusnappi { top: 18vmin; }
+    body.asetukset-auki .asetusnappi { background: rgba(255, 210, 60, 0.5); }
+
+    /* Asetukset aukeavat ⚙️-napin oikealle puolelle vaakariviin */
+    #asetukset {
+      display: none;
+      position: fixed;
+      top: calc(18vmin - 1vmin);
+      left: calc(var(--reuna) + env(safe-area-inset-left, 0px) + var(--pieni) + var(--pieniVali) * 2);
+      gap: var(--pieniVali);
+      padding: 1vmin 1.5vmin;
+      background: rgba(0, 0, 0, 0.6);
+      border-radius: 2vmin;
+    }
+    body.asetukset-auki #asetukset { display: flex; }
+    .asetus {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5vmin;
+      min-width: calc(var(--pieni) * 1.25);
+      color: white;
+      font: bold clamp(11px, 3.2vmin, 18px) sans-serif;
+    }
+    .asetus .nappi { position: static; } /* napit asettuvat riviin, eivät kulmiin */
+    .asetus.pohjassa .nappi, .asetus.paalla .nappi { background: rgba(255, 210, 60, 0.5); }
 
     /* Pystyasennossa pyydetään kääntämään puhelin */
     @media (orientation: portrait) {
@@ -116,7 +138,7 @@
 
   <p>
     Liiku: ← → tai A D &nbsp;|&nbsp; Hyppää: ↑, W tai välilyönti &nbsp;|&nbsp;
-    Tulipallo: X &nbsp;|&nbsp; Äänet: M &nbsp;|&nbsp; Maailma alusta: R (paina 2 kertaa) &nbsp;|&nbsp; Tauko: Esc
+    Tulipallo: X &nbsp;|&nbsp; Äänet: M &nbsp;|&nbsp; Maailma alusta: R (paina 2 kertaa) &nbsp;|&nbsp; Tauko: Esc &nbsp;|&nbsp; FPS-mittari: F3
   </p>
   <p>
     Kaksinpeli (valitse alkuvalikosta "Pelaajat"):
@@ -129,10 +151,15 @@
     <div class="nappi oikea" data-nappi="ArrowRight">▶</div>
     <div class="nappi ammu" data-nappi="KeyX">🔥</div>
     <div class="nappi hyppy" data-nappi="ArrowUp">⬆</div>
-    <div class="nappi pieni kartalle" data-nappi="Escape">☰</div>
-    <div class="nappi pieni alusta" data-nappi="KeyR">↻</div>
-    <div class="nappi pieni aanet" data-nappi="KeyM">🔊</div>
-    <div class="nappi pieni koko" id="kokonappi">🔍</div>
+    <!-- ⚙️ avaa ja sulkee muut napit (kosketus.js) -->
+    <div class="nappi pieni asetusnappi" id="asetusnappi">⚙️</div>
+    <div id="asetukset">
+      <div class="asetus" data-nappi="Escape"><div class="nappi pieni">⏸</div>Tauko</div>
+      <div class="asetus" data-nappi="KeyR"><div class="nappi pieni">↻</div>Alusta</div>
+      <div class="asetus" data-nappi="KeyM"><div class="nappi pieni" id="aanikuvake">🔊</div>Äänet</div>
+      <div class="asetus" data-toiminto="koko"><div class="nappi pieni">🔍</div>Koko</div>
+      <div class="asetus" data-toiminto="fps"><div class="nappi pieni">📊</div>FPS</div>
+    </div>
   </div>
   <div id="kaanna">
     <div style="font-size: 60px">🔄</div>

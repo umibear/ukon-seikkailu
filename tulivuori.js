@@ -265,6 +265,8 @@ function suihkunAlue(s) {
 
 // ---------- PIIRTÄMINEN ----------
 
+const laavanLiukuvarit = new Map(); // valmiit liukuvärit laavan korkeuden mukaan
+
 // Laava piirretään ennen tasoja, jotta tasot näyttävät olevan laavan päällä
 function piirraLaavat(aika) {
   for (const l of kentta.laavat) {
@@ -273,10 +275,15 @@ function piirraLaavat(aika) {
     const loppu = Math.min(l.x + l.leveys, kameraX + canvas.width + 20);
     if (loppu <= alku) continue;
 
-    const liuku = ctx.createLinearGradient(0, l.y, 0, canvas.height);
-    liuku.addColorStop(0, "#ffb000");
-    liuku.addColorStop(0.15, "#ff5a00");
-    liuku.addColorStop(1, "#8a1500");
+    // Laavan liukuväri tehdään vain kerran jokaiselle laavan korkeudelle
+    let liuku = laavanLiukuvarit.get(l.y);
+    if (!liuku) {
+      liuku = ctx.createLinearGradient(0, l.y, 0, canvas.height);
+      liuku.addColorStop(0, "#ffb000");
+      liuku.addColorStop(0.15, "#ff5a00");
+      liuku.addColorStop(1, "#8a1500");
+      laavanLiukuvarit.set(l.y, liuku);
+    }
     ctx.fillStyle = liuku;
     ctx.beginPath();
     ctx.moveTo(alku, canvas.height + 10);
