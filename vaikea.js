@@ -7,6 +7,7 @@
 //       Vihreä saari    = liaanit, joissa heilutaan       (liaanit.js)
 //       Tulivuorisaari  = ruutitynnyrit ja laavatulva     (ruuti.js)
 //       Pakkassaari     = pakkanen puree: pysy lämpimänä! (pakkanen.js)
+//       Aavikkosaari    = aurinko polttaa ja kivet vajoavat (aavikko.js)
 //   - kentissä on muutoksia (vaikeatkentat.js) ja pomot ovat äkäisempiä
 //   Kun kentän pääsee läpi vaikealla, kartalle tulee tähti ★.
 //
@@ -25,6 +26,10 @@
 //     lumiukkeli  = heittää kolme lumipalloa kerralla
 //     jäähauki    = sylkee jääpalan hypyn huipulla
 //     pöllö       = syöksyy paljon useammin
+//     kaktus      = ampuu kaksi piikkiä kaaressa
+//     skorpioni   = nousee hiekasta nopeammin ja juoksee kovempaa
+//     pyörre      = liikkuu nopeammin
+//     muumio      = kävelee nopeammin ja nousee kasasta pikemmin
 // ==========================================
 
 const VAIKEUDEN_NIMI = "ukonSeikkailuVaikeus"; // tällä nimellä valinta on selaimen muistissa

@@ -86,6 +86,10 @@ function lisaaAarre(k, numero) {
     }
     ulos = { x: ulosX, y: lattia - 40 };
   }
+  // Kivi, jolle kammiosta palataan, ei saa vajota ukon alta (vaikealla, aavikko.js)
+  for (const t of k.tasot) {
+    if (t.vajoaa && ulos.x + 10 > t.x && ulos.x + 10 < t.x + t.leveys) t.vajoaa = false;
+  }
   k.salakuoppa = {
     x: kuoppa.x,
     leveys: kuoppa.leveys,

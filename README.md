@@ -31,7 +31,7 @@ Kun kentän pääsee läpi vaikealla, kartalle tulee tähti ★.
 | 1. Vihreä saari | **liaanit**: hyppää liaaniin, heilu ◀ ▶ ja hyppää irti. Varo: tulipallo polttaa liaanin! |
 | 2. Tulivuorisaari | **ruutitynnyrit** ja sytytyslangat (räjäytä seinät, tykit ja vihut) sekä **laavatulva**, joka nousee välillä |
 | 3. Pakkassaari | **pakkanen puree**: tulimittari on ukon lämpö. Se hupenee koko ajan, ja lämpöä saa vain nuotiolta ja hyppäämällä vihujen päälle |
-| 4. Aavikkosaari | **aurinko polttaa**: täysi paahdemittari vie elämän (normaalilla se vain pyörryttää). Juoksuhiekka upottaa nopeammin ja hyppyä pitää näpytellä, ja kaktukset ampuvat piikkejä |
+| 4. Aavikkosaari | **aurinko polttaa**: täysi paahdemittari vie elämän (normaalilla se vain pyörryttää). Juoksuhiekka upottaa nopeammin ja hyppyä pitää näpytellä, **kivet vajoavat** hiekkaan, kun niiden päällä seistään, ja kaktukset ampuvat piikkejä |
 
 Vihujen temput on lueteltu tiedoston `vaikea.js` alussa, ja kenttien muutokset ovat tiedostossa `vaikeatkentat.js`.
 Kokeile lisätä kenttään oma liaani tai tynnyri!

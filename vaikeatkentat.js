@@ -7,6 +7,8 @@
 //                     ja LAAVATULVA (ruuti.js)
 //   - Pakkassaari:    pakkanen puree itsestään (pakkanen.js), joten kenttiin
 //                     tarvitaan vain pari nuotiota lisää
+//   - Aavikkosaari:   aurinko polttaa itsestään (aavikko.js), ja juoksuhiekan
+//                     kivet VAJOAVAT, kun niiden päällä seistään
 //   Kokeile itse: lisää liaani, tynnyri tai tulva johonkin kenttään!
 // ==========================================
 
@@ -28,6 +30,16 @@ function kolikkoLiaaniin(k, kolikonX, liaani, kulma) {
   const matka = liaani.pituus * 0.85; // suunnilleen tässä kohdassa ukon kädet ovat
   kolikko.x = Math.round(liaani.x + Math.sin(kulma) * matka - 10);
   kolikko.y = Math.round(liaani.y + Math.cos(kulma) * matka + 5);
+}
+
+// Muuttaa juoksuhiekassa olevat kivet vajoaviksi (aavikko.js)
+function vajoavatKivet(k) {
+  for (const h of k.juoksuhiekat) {
+    for (const t of k.tasot) {
+      const hiekassa = t.x >= h.x && t.x + t.leveys <= h.x + h.leveys;
+      if (hiekassa && t.y > 340 && t.y < 410 && t.korkeus > 20) t.vajoaa = true;
+    }
+  }
 }
 
 // Pieni turvataso, jolle pääsee laavatulvaa pakoon
@@ -240,4 +252,47 @@ const VAIKEAT_KENTAT = [
   },
 
   null, // kenttä 17, Pakkasukon linna
+
+  // ---------- MAAILMA 4: AAVIKKOSAARI ----------
+  // Aurinko polttaa ja juoksuhiekka on pahempaa itsestään (aavikko.js).
+  // Lisäksi juoksuhiekan kivet VAJOAVAT, kun niiden päällä seistään: älä jää paikallesi!
+
+  // Kenttä 18, Dyynit
+  function (k) {
+    vajoavatKivet(k);
+    k.viholliset.push({ tyyppi: "skorpioni", x: 2000, lattia: 410, vasen: 1760, oikea: 2100 });
+    k.viholliset.push({ tyyppi: "kaktus", x: 3330, lattia: 410 });
+  },
+
+  // Kenttä 19, Kaktuslaakso: ensimmäisessä rivissä on kolmas kaktus
+  function (k) {
+    vajoavatKivet(k);
+    k.viholliset.push({ tyyppi: "kaktus", x: 584, lattia: 410, vaihe: 120 });
+    k.viholliset.push({ tyyppi: "skorpioni", x: 1650, lattia: 410, vasen: 1450, oikea: 1780 });
+  },
+
+  // Kenttä 20, Kangastusten kanjoni: kallioilla on enemmän kaktuksia ja yksi kangastus lisää
+  function (k) {
+    vajoavatKivet(k);
+    k.viholliset.push({ tyyppi: "kaktus", x: 2230, lattia: 330 });
+    k.kangastukset.push({ x: 1225, y: 330, leveys: 70 });
+  },
+
+  // Kenttä 21, Pyramidin uumenissa: yksi muumio ja yksi hämähäkki lisää
+  function (k) {
+    vajoavatKivet(k);
+    k.viholliset.push({ tyyppi: "muumio", x: 400, lattia: 410, vasen: 250, oikea: 560 });
+    k.viholliset.push({ tyyppi: "tippuja", x: 3420, y: 90, lattia: 410 });
+  },
+
+  // Kenttä 22, Paahdeharju
+  function (k) {
+    vajoavatKivet(k);
+    k.viholliset.push({ tyyppi: "kaktus", x: 2860, lattia: 410 });
+  },
+
+  // Kenttä 23, Hiekkamadon pesä: matkalla areenalle kivet vajoavat
+  function (k) {
+    vajoavatKivet(k);
+  },
 ];

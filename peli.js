@@ -2590,7 +2590,7 @@ function piirraTaso(t) {
   // Taso on piirretty valmiiksi (valmiskuvat.js), joten se vain kopioidaan
   const valmis = tasonKuva(t);
   if (valmis) {
-    ctx.drawImage(valmis, t.x, t.y);
+    ctx.drawImage(valmis, t.x, Math.round(t.y)); // (vajoava kivi voi olla puolikkaan pikselin kohdalla)
     return;
   }
   // Kuvat eivät ole vielä latautuneet: piirretään laatta kerrallaan

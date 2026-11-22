@@ -393,6 +393,41 @@ for (const [nimi, kaksin, vaikea] of [["yksinpeli", false, false], ["kaksinpeli"
   tarkista(!virhe, "kentät 18-23 pyörivät ja piirtyvät: " + nimi + " " + (virhe ? virhe.stack : ""));
 }
 
+// --- Vaikea: vajoavat kivet ---
+{
+  T = lataa(); p = T.pelaaja1;
+  let kivia = 0;
+  for (let n = 17; n <= 22; n++) { T.ev(`aloitaKentta(${n})`); kivia += T.kentta.vajoavat.length; }
+  tarkista(kivia === 0, "normaalilla kivet eivät vajoa");
+  T.ev("vaikea = true");
+  const viat = [];
+  for (let n = 17; n <= 22; n++) {
+    T.ev(`aloitaKentta(${n})`);
+    const k = T.kentta;
+    if (k.vajoavat.length === 0) viat.push(k.nimi + ": ei vajoavia kiviä");
+    for (const t of k.vajoavat) if (!k.juoksuhiekat.some((h) => t.x >= h.x && t.x + t.leveys <= h.x + h.leveys)) viat.push(k.nimi + ": vajoava kivi " + t.x + " ei ole hiekassa");
+    if (k.tasot.some((t) => t.vajoaa && (t.y === 410 || t.korkeus <= 20))) viat.push(k.nimi + ": väärä taso vajoaa");
+    // Lippu tai vihu ei saa seistä vajoavalla kivellä
+    for (const t of k.vajoavat) if (k.viholliset.some((v) => v.x + 10 > t.x && v.x < t.x + t.leveys && v.lattia === t.y)) viat.push(k.nimi + ": vihu vajoavalla kivellä");
+  }
+  tarkista(viat.length === 0, "vaikealla jokaisessa aavikon kentässä on vajoavia kiviä juoksuhiekassa " + viat.join("; "));
+  T.ev("aloitaKentta(17)");
+  const kivi = T.kentta.vajoavat[0];
+  const y0 = kivi.y;
+  Object.assign(p, { x: kivi.x + 25, y: kivi.y - 40, vy: 0, suojaAika: 0, paahde: 0 });
+  for (let i = 0; i < 20; i++) { p.paahde = 0; T.paivita(1); }
+  tarkista(kivi.y > y0 + 5 && Math.abs(p.y + 40 - kivi.y) < 2 && p.elamat === 3, "kivi vajoaa ukon alla ja ukko pysyy sen päällä (" + (kivi.y - y0).toFixed(0) + " px)");
+  tarkista(T.kentta.kiviVihje, "peli varoittaa vajoavasta kivestä");
+  for (let i = 0; i < 200; i++) { p.paahde = 0; T.paivita(1); }
+  tarkista(kivi.y === 426 && p.elamat === 3, "kivi vajoaa enintään vähän pinnan alle, eikä sen päällä huku");
+  T.napit.ArrowUp = true; T.paivita(1); delete T.napit.ArrowUp;
+  tarkista(p.vy < -8, "vajonneelta kiveltä pääsee hyppäämällä pois");
+  p.x = 2700; p.y = 370; p.vy = 0;
+  for (let i = 0; i < 60; i++) { p.paahde = 0; T.paivita(1); }
+  tarkista(kivi.y === y0, "kun kiveltä lähtee, se nousee takaisin");
+  T.piirra(1000);
+}
+
 // --- Vanha tallennus (17 kenttää läpäisty) avaa uuden maailman ---
 {
   const data = { ukonSeikkailuTallennus: JSON.stringify({ avattu: 16, kartanKohta: 16, parhaatPisteet: Array(17).fill(500), parhaatKolikot: Array(17).fill(5), elamat: [3, 3] }) };

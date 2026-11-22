@@ -29,6 +29,9 @@ const KANGASTUKSEN_ETAISYYS = 110; // kuinka läheltä kangastus haihtuu (piksel
 const PALMUN_KORKEUS = 120;
 const PALMUN_KATVE = 110; // kuinka leveä varjo palmun alla on
 const PILVEN_LEVEYS = 170;
+const KIVEN_VAJOAMINEN = 0.5; // vaikealla: kuinka nopeasti kivi vajoaa, kun sen päällä seistään
+const KIVEN_NOUSU = 1; // kuinka nopeasti kivi nousee takaisin, kun sen päältä lähdetään
+const KIVEN_SYVYYS = 16; // kuinka syvälle hiekan pinnan alle kivi enintään vajoaa
 
 // ---------- PIKSELIKUVAT ----------
 // Kuvat on piirretty kirjaimilla niin kuin Pakkassaarella (pakkanen.js: pikselikuva).
@@ -115,6 +118,9 @@ function valmisteleAavikko(k) {
     if (!p.nopeus) p.nopeus = 0.008;
     p.aika = p.vaihe || 0;
   }
+  // Vajoavat kivet (vain vaikealla, vaikeatkentat.js): taso, jossa on vajoaa: true
+  k.vajoavat = k.tasot.filter((t) => t.vajoaa);
+  for (const t of k.vajoavat) t.alkuY = t.y;
   // Soihdut: x ja y (valaisevat pimeää pyramidia)
   if (!k.soihdut) k.soihdut = [];
   // Kangastukset: x, y ja leveys
@@ -275,6 +281,23 @@ function paivitaAavikko(dt) {
     }
   }
 
+  // Vajoavat kivet: kivi vajoaa hiekkaan, kun sen päällä seistään, ja nousee, kun siltä lähdetään.
+  // (Ukkoa ei tarvitse siirtää itse: se putoaa kiven mukana.)
+  for (const t of kentta.vajoavat) {
+    const paalla = elavatPelaajat().some((pl) => pl.maassa && Math.abs(pl.y + pl.korkeus - t.y) < 2 && pl.x + pl.leveys > t.x && pl.x < t.x + t.leveys);
+    if (paalla) {
+      if (!kentta.kiviVihje) {
+        kentta.kiviVihje = true;
+        lisaaTeksti(t.x + t.leveys / 2, t.y - 50, "KIVI VAJOAA! ÄLÄ JÄÄ SEISOMAAN!");
+      }
+      if (t.y === t.alkuY) aanet.putoaa();
+      t.y = Math.min(410 + KIVEN_SYVYYS, t.y + KIVEN_VAJOAMINEN * dt);
+      if (Math.random() < 0.3) lisaaHiukkasia(t.x + Math.random() * t.leveys, 410, 1, ["#f3d9a0", "#c99a55"], 2);
+    } else {
+      t.y = Math.max(t.alkuY, t.y - KIVEN_NOUSU * dt);
+    }
+  }
+
   // Upposiko joku kokonaan hiekkaan?
   if (kentta.juoksuhiekat.length === 0) return false;
   for (const pl of elavatPelaajat()) {
@@ -378,6 +401,17 @@ function piirraAavikkoTausta(aika) {
 
 // Kangastukset (peli.js: piirraMaailma)
 function piirraAavikko(aika) {
+  // Vajoavan kiven tunnistaa kahdesta alaspäin osoittavasta nuolesta
+  for (const t of kentta.vajoavat) {
+    if (!naytolla(t.x, t.leveys)) continue;
+    const y = Math.round(t.y) + 8 + Math.round(Math.sin(aika / 250 + t.x) * 2);
+    ctx.fillStyle = "#8a5a2b";
+    for (const x of [t.x + t.leveys / 2 - 16, t.x + t.leveys / 2 + 6]) {
+      ctx.fillRect(x, y, 10, 3);
+      ctx.fillRect(x + 2, y + 3, 6, 3);
+      ctx.fillRect(x + 4, y + 6, 2, 3);
+    }
+  }
   for (const m of kentta.kangastukset) {
     if (m.nakyvyys <= 0 || !naytolla(m.x, m.leveys)) continue;
     // Kangastus väreilee: se heiluu vähän ja on hiukan läpinäkyvä. Tarkkasilmäinen huomaa!
