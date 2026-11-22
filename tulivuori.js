@@ -85,11 +85,7 @@ function valmisteleLaavapallo(v) {
   v.suunta = 1;
 }
 
-function laattaKuva(ylin) {
-  if (kentta.laatat === "kivi")
-    return ylin ? tulikuvat.kivi : tulikuvat.kivimulta;
-  return ylin ? kuvat.maa : kuvat.multa;
-}
+// (Laattojen valinta, laattaKuva, on tiedostossa pakkanen.js.)
 
 // ---------- PÄIVITYS ----------
 
@@ -106,8 +102,10 @@ function paivitaLaavapallo(v, dt) {
     }
     return;
   }
+  const nousi = v.vy < 0;
   v.vy += 0.35 * dt;
   v.y += v.vy * dt;
+  if (vaikea && nousi && v.vy >= 0) laavapalloRoiskuu(v); // hypyn huipulla (vaikea.js)
   if (v.vy > 0 && v.y > v.lattia + 10) {
     v.piilossa = true;
     v.ajastin = v.jakso;
@@ -131,6 +129,7 @@ function paivitaTulivuori(dt) {
 
   // Tykit ampuvat, kun joku pelaaja on lähellä
   for (const t of kentta.tykit) {
+    if (t.rikki) continue; // räjähdys rikkoi tykin (ruuti.js)
     t.ajastin -= dt;
     if (t.ajastin > 0) continue;
     t.ajastin = t.jakso;
@@ -172,6 +171,7 @@ function paivitaTulivuori(dt) {
       if (!t.eiKiintea && osuu(k, t)) {
         k.elossa = false;
         lisaaHiukkasia(k.x + 8, k.y + 8, 8, ["#888", "#bbb"], 2);
+        if (t.tynnyri) sytytaTynnyri(t); // kuula sytyttää ruutitynnyrin (ruuti.js)
         break;
       }
     }
@@ -270,6 +270,7 @@ const laavanLiukuvarit = new Map(); // valmiit liukuvärit laavan korkeuden muka
 // Laava piirretään ennen tasoja, jotta tasot näyttävät olevan laavan päällä
 function piirraLaavat(aika) {
   for (const l of kentta.laavat) {
+    if (l.tulva) continue; // tulva piirretään myöhemmin kaiken päälle (ruuti.js)
     // Piirretään vain ruudulla näkyvä osa
     const alku = Math.max(l.x, kameraX - 20);
     const loppu = Math.min(l.x + l.leveys, kameraX + canvas.width + 20);
@@ -377,7 +378,10 @@ function piirraTulisuihkut(aika) {
 function piirraTykitJaKuulat(aika) {
   for (const t of kentta.tykit) {
     // Kuvan piippu osoittaa vasemmalle: oikealle ampuva tykki peilataan
-    piirraRuutu(tulikuvat.tykki, 0, 16, 16, t.x, t.y, t.suunta === 1);
+    // Rikkinäinen tykki on musta ja savuaa
+    const kuva = t.rikki ? suodatettu(tulikuvat.tykki, "brightness(0.3)") : tulikuvat.tykki;
+    piirraRuutu(kuva, 0, 16, 16, t.x, t.y, t.suunta === 1);
+    if (t.rikki && Math.random() < 0.08) lisaaHiukkasia(t.x + 16, t.y, 1, ["#555", "#777"], 1);
   }
   for (const k of kentta.kuulat) {
     ctx.save();
@@ -527,7 +531,7 @@ function nollaaMagma(p) {
 }
 
 function paivitaMagma(p, dt, elavat) {
-  const vihainen = p.elamat <= p.maxElamat / 3; // vihaisena nopeampi
+  const vihainen = pomoVihainen(p); // vihaisena nopeampi (vaikealla jo aikaisemmin, vaikea.js)
   p.ajastin -= dt;
 
   if (p.tila === "kavelee") {

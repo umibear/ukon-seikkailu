@@ -105,6 +105,6 @@ try {
     for (let n = 0; n < T.KENTAT.length; n++) { T.ev(`aloitaKentta(${n})`); for (let i = 0; i < 600; i++) { T.paivita(1); if (i % 60 === 0) T.piirra(i * 16); } }
   }
 } catch (e) { virhe = e; }
-tarkista(!virhe, "kaikki 11 kenttää pyörivät ja piirtyvät (1P ja 2P) " + (virhe ? virhe.stack : ""));
+tarkista(!virhe, "kaikki " + T.KENTAT.length + " kenttää pyörivät ja piirtyvät (1P ja 2P) " + (virhe ? virhe.stack : ""));
 
 console.log("\n" + ok + " ok, " + vika + " vikaa");

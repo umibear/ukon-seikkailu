@@ -79,6 +79,7 @@ function valmisteleTulivihu(v) {
 function paivitaTulivihu(v, dt) {
   if (v.tyyppi === "kekale") {
     v.x += v.nopeus * v.suunta * dt;
+    if (vaikea) kekaleLeimahtaa(v, dt); // leimahtaa välillä liekkeihin (vaikea.js)
   } else if (v.tyyppi === "kipina") {
     v.x += v.nopeus * v.suunta * dt;
     v.ika -= dt;
@@ -94,7 +95,8 @@ function paivitaTulivihu(v, dt) {
     if (Math.abs(v.x - v.viimeJalki) >= JALJEN_VALI) {
       v.viimeJalki = v.x;
       const takana = v.suunta === 1 ? v.x : v.x + v.leveys - 14;
-      kentta.laavajaljet.push({ x: takana, y: v.lattia - 6, leveys: 14, korkeus: 6, ika: JALJEN_IKA });
+      const ika = vaikea ? JALJEN_IKA * 2 : JALJEN_IKA; // vaikealla jälki palaa pitkään
+      kentta.laavajaljet.push({ x: takana, y: v.lattia - 6, leveys: 14, korkeus: 6, ika: ika });
     }
   } else if (v.tyyppi === "salamanteri") {
     paivitaSalamanteri(v, dt);
@@ -124,7 +126,13 @@ function paivitaSalamanteri(v, dt) {
       v.ajastin = 20;
     }
   } else if (v.tila === "sylkee") {
-    if (v.ajastin <= 0) {
+    if (v.ajastin <= 0 && vaikea && !v.toinenSylky) {
+      // Vaikealla salamanteri sylkee heti toisenkin kerran
+      v.toinenSylky = true;
+      v.tila = "valmistautuu";
+      v.ajastin = 22;
+    } else if (v.ajastin <= 0) {
+      v.toinenSylky = false;
       v.tila = "kavelee";
       v.ajastin = SYLKEMISEN_JAKSO;
     }
@@ -177,7 +185,10 @@ function paivitaTulivihujenAmmukset(dt) {
     s.matka += Math.abs(s.vx) * dt;
     if (s.matka > 600) s.elossa = false;
     for (const taso of kentta.kaikkiTasot) {
-      if (s.elossa && !taso.eiKiintea && osuu(s, taso)) s.elossa = false;
+      if (s.elossa && !taso.eiKiintea && osuu(s, taso)) {
+        s.elossa = false;
+        if (taso.tynnyri) sytytaTynnyri(taso); // sylky sytyttää ruutitynnyrin (ruuti.js)
+      }
     }
     // Ukon tulipallo ja salamanterin sylky sammuttavat toisensa
     for (const t of tulipallot) {
@@ -217,14 +228,16 @@ function tulivihuOsuu(v) {
   const ylhaalta = pelaaja.vy > 0 && edellisetJalat <= v.y + 10;
 
   // Päälle hyppääminen toimii, paitsi laavaetanaan (kuuma kuori!)
-  if (ylhaalta && v.tyyppi !== "laavaetana") {
+  // ja liekeissä olevaan kekäleeseen (vaikea.js)
+  if (ylhaalta && v.tyyppi !== "laavaetana" && !v.kuuma) {
     tuhoaVihu(v, false);
     if (v.tyyppi === "kekale") hajotaKekale(v);
     pomppaaVihusta();
     return false;
   }
   if (pelaaja.suojaAika > 0) return false;
-  lisaaTeksti(pelaaja.x + 10, pelaaja.y - 10, ylhaalta ? "KUUMA KUORI!" : "AUTS!");
+  const kuuma = ylhaalta && v.tyyppi === "kekale" ? "LIEKEISSÄ!" : "KUUMA KUORI!";
+  lisaaTeksti(pelaaja.x + 10, pelaaja.y - 10, ylhaalta ? kuuma : "AUTS!");
   menetaElama();
   return true;
 }
@@ -254,6 +267,7 @@ function piirraTulivihu(v, aika) {
   if (v.tyyppi === "kekale") {
     if (v.elossa) hehku(v.x + 13, v.y + 13, 34, "255, 120, 0", 0.25 + Math.sin(aika / 120) * 0.1);
     piirraRuutu(kuvaksi(tulivihuKuvat.kekale), v.elossa ? ruutu : 0, 16, 16, v.x - 3, v.lattia - 30, peilaa);
+    if (v.elossa && (v.kuuma || v.kuumenee)) piirraLeimu(v, aika); // vaikea.js
   } else if (v.tyyppi === "kipina") {
     piirraKipina(v, aika, tumma);
   } else if (v.tyyppi === "laavaetana") {

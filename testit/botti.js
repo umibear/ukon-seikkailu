@@ -4,6 +4,7 @@
 const T = require("./peli_node.js")();
 const n = +process.argv[2] - 1, MAX = +(process.argv[3] || 60000);
 const LOHKO = 6; // montako ruutua sama liike kestää
+if (process.env.VAIKEA) T.ev("vaikea = true"); // VAIKEA=1 = botti pelaa vaikealla
 T.kaksinpeli(false); T.aloitaKentta(n);
 for (let i = 0; i < 5; i++) T.paivita(1);
 const k0 = T.kentta;
@@ -19,9 +20,15 @@ function asetaNapit(a) {
   if (a.s) T.ammu();
 }
 const pomoE = () => (T.kentta.pomo ? T.kentta.pomo.elamat : 0);
-const jaahtynyt = () => (T.kentta.pomo && T.kentta.pomo.jaahtynyt ? 1 : 0);
-const avain = () => { const p = T.pelaaja1; return [Math.floor(p.x / 32), Math.floor(p.y / 32), pomoE(), jaahtynyt()].join(","); };
-const pisteet = () => T.pelaaja1.x + (T.kentta.pomo ? (T.kentta.pomo.maxElamat - pomoE()) * 2000 : 0);
+// Onko pomo juuri nyt haavoittuva? (Magmamörkö jäähtynyt tai Pakkasukko sulanut)
+const jaahtynyt = () => (T.kentta.pomo && (T.kentta.pomo.jaahtynyt || T.kentta.pomo.tila === "sulanut") ? 1 : 0);
+// Vaikean tason asiat: montako seinää/tynnyriä on räjäytetty ja lankaa sytytetty, ja missä vaiheessa laavatulva on
+const edistys = () => { const k = T.kentta; return k.murtuvat.filter((m) => m.eiKiintea).length + k.tynnyrit.filter((t) => t.tila !== "ehja").length + k.langat.filter((l) => l.palanut >= 0).length; };
+const tulvanVaihe = () => (T.kentta.tulva ? Math.floor(((T.kentta.tulva.aika % T.kentta.tulva.jakso) / T.kentta.tulva.jakso) * 5) : 0);
+// Onko lähellä liikkuva taso? Silloin sen vaihe (4 osaa) kuuluu tilaan, jotta botti osaa odottaa tasoa.
+const kyyti = () => { const p = T.pelaaja1; const a = T.kentta.liikkuvatTasot.find((t) => Math.abs(t.x + t.leveys / 2 - p.x) < 220); return a ? 1 + Math.floor((((a.aika * a.nopeus) / (Math.PI * 2)) % 1) * 4) : 0; };
+const avain = () => { const p = T.pelaaja1; return [kyyti(), Math.floor(p.x / 32), Math.floor(p.y / 32), pomoE(), jaahtynyt(), edistys(), tulvanVaihe(), p.liaani >= 0 ? 1 : 0, process.env.VAIKEA ? Math.floor(p.tuli / 35) : 0].join(","); };
+const pisteet = () => T.pelaaja1.x + edistys() * 150 + (T.kentta.pomo ? (T.kentta.pomo.maxElamat - pomoE()) * 2000 : 0);
 const solut = new Map();
 solut.set(avain(), { tila: T.SNAP(), aika: 0, kayty: 0, x: T.pelaaja1.x, piste: pisteet() });
 const syyt = {};

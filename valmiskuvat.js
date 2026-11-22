@@ -71,22 +71,23 @@ function suodataItse(cc, suodin) {
 }
 
 // ---------- HEHKU ----------
-// Pehmeä valopallo piirretään kerran jokaiselle värille ja koolle
+// Pehmeä valopallo piirretään kerran jokaiselle värille. Kun hehku piirretään,
+// kuva venytetään oikean kokoiseksi ja himmennetään (tehosteet.js: hehku).
 const hehkuKuvat = new Map();
+const HEHKUN_SADE = 64;
 
-function hehkuKuva(vari, sade, voimakkuus) {
-  const avain = vari + "|" + sade + "|" + voimakkuus;
-  let c = hehkuKuvat.get(avain);
+function hehkuKuva(vari) {
+  let c = hehkuKuvat.get(vari);
   if (!c) {
-    if (hehkuKuvat.size > 300) hehkuKuvat.clear(); // ettei muisti täyty
+    const sade = HEHKUN_SADE;
     c = uusiPiilocanvas(sade * 2, sade * 2);
     const cc = c.getContext("2d");
     const liuku = cc.createRadialGradient(sade, sade, 0, sade, sade, sade);
-    liuku.addColorStop(0, "rgba(" + vari + ", " + voimakkuus + ")");
+    liuku.addColorStop(0, "rgba(" + vari + ", 1)");
     liuku.addColorStop(1, "rgba(" + vari + ", 0)");
     cc.fillStyle = liuku;
     cc.fillRect(0, 0, sade * 2, sade * 2);
-    hehkuKuvat.set(avain, c);
+    hehkuKuvat.set(vari, c);
   }
   return c;
 }
@@ -122,10 +123,10 @@ const SUURIN_KUVA = 4096;
 function tasonKuva(t, reunat) {
   if (reunat === undefined) reunat = true;
   if (t.leveys > SUURIN_KUVA || t.korkeus > SUURIN_KUVA) return null; // liian iso: piirretään laatoista
-  const ylin = laattaKuva(true);
-  const alempi = laattaKuva(false);
+  const ylin = laattaKuva(true, t);
+  const alempi = laattaKuva(false, t);
   if (!kuvaValmis(ylin) || !kuvaValmis(alempi)) return null;
-  const avain = t.leveys + "x" + t.korkeus + "|" + ylin.src + "|" + reunat;
+  const avain = t.leveys + "x" + t.korkeus + "|" + laatanNimi(t) + "|" + reunat;
   let c = tasoKuvat.get(avain);
   if (!c) {
     if (tasoKuvat.size > 300) tasoKuvat.clear();
@@ -154,6 +155,20 @@ function tasonKuva(t, reunat) {
 // teksti piirretään kerran omaan kuvaansa, ja sen jälkeen kuva vain kopioidaan.
 const tekstiKuvat = new Map();
 let tekstinMittari = null; // apuväline tekstin koon mittaamiseen
+let tekstiKello = 0; // kasvaa joka kerta, kun jokin teksti piirretään
+
+// Kun valmiita tekstejä on kertynyt liikaa (kello ja pisteet muuttuvat koko ajan),
+// poistetaan ne, joita ei ole piirretty vähään aikaan. Usein käytetyt tekstit säilyvät,
+// joten peli ei nykäise niin kuin silloin, jos kaikki tehtäisiin kerralla uudestaan.
+function siivoaTekstit() {
+  const raja = tekstiKello - 1500; // noin pari sekuntia
+  for (const [avain, k] of tekstiKuvat) {
+    if (k.viimeksi < raja) {
+      k.kuva.width = 0; // vapauttaa kuvan muistin heti
+      tekstiKuvat.delete(avain);
+    }
+  }
+}
 
 // Palauttaa false, jos valmista tekstiä ei voi käyttää (silloin piirretään tavalliseen tapaan)
 function piirraValmisTeksti(teksti, x, y, koko, tasaus, vari) {
@@ -169,7 +184,7 @@ function piirraValmisTeksti(teksti, x, y, koko, tasaus, vari) {
     tekstinMittari.font = "bold " + koko + "px sans-serif";
     const mitat = tekstinMittari.measureText(teksti);
     if (!(mitat.width > 0) || mitat.actualBoundingBoxAscent === undefined) return false;
-    if (tekstiKuvat.size > 300) tekstiKuvat.clear(); // ettei muisti täyty
+    if (tekstiKuvat.size > 200) siivoaTekstit(); // ettei muisti täyty
     const reuna = Math.ceil(Math.max(3, koko / 6)) + 2; // tilaa reunaviivalle
     const vasen = Math.ceil(Math.max(0, mitat.actualBoundingBoxLeft));
     const oikea = Math.ceil(Math.max(mitat.width, mitat.actualBoundingBoxRight));
@@ -177,9 +192,10 @@ function piirraValmisTeksti(teksti, x, y, koko, tasaus, vari) {
     const ala = Math.ceil(Math.max(mitat.actualBoundingBoxDescent, koko * 0.25));
     const c = uusiPiilocanvas(vasen + oikea + reuna * 2, yla + ala + reuna * 2);
     piirraTekstiReunalla(c.getContext("2d"), teksti, reuna + vasen, reuna + yla, koko, "left", vari);
-    k = { kuva: c, leveys: mitat.width, x: reuna + vasen, y: reuna + yla };
+    k = { kuva: c, leveys: mitat.width, x: reuna + vasen, y: reuna + yla, viimeksi: 0 };
     tekstiKuvat.set(avain, k);
   }
+  k.viimeksi = ++tekstiKello;
   // Missä kohtaa tekstin alku on (tasaus: vasen, keskellä tai oikea)
   let alku = x;
   if (tasaus === "center") alku = x - k.leveys / 2;
@@ -189,23 +205,25 @@ function piirraValmisTeksti(teksti, x, y, koko, tasaus, vari) {
 }
 
 // ---------- TAIVAS ----------
-// Liukuväri tehdään 1 pikselin levyisenä ja venytetään koko ruudun levyiseksi
-const taivasKuvat = new Map();
+// Taivaan liukuväri piirretään kerran ruudun kokoiseksi kuvaksi. Valmiin
+// samankokoisen kuvan kopioiminen on nopeampaa kuin liukuvärin venyttäminen.
+// Vain nykyisen kentän taivas muistetaan (iso kuva vie muistia).
+let taivas = null; // { avain, canvas }
 
 function taivasKuva(yla, ala) {
   const avain = yla + "|" + ala;
-  let c = taivasKuvat.get(avain);
-  if (!c) {
-    c = uusiPiilocanvas(1, canvas.height);
-    const cc = c.getContext("2d");
+  if (!taivas || taivas.avain !== avain) {
+    const c = taivas ? taivas.canvas : uusiPiilocanvas(canvas.width, canvas.height);
+    // alpha: false = kuva ei ole läpinäkyvä, joten sen voi kopioida sekoittamatta
+    const cc = c.getContext("2d", { alpha: false });
     const liuku = cc.createLinearGradient(0, 0, 0, canvas.height);
     liuku.addColorStop(0, yla);
     liuku.addColorStop(1, ala);
     cc.fillStyle = liuku;
-    cc.fillRect(0, 0, 1, canvas.height);
-    taivasKuvat.set(avain, c);
+    cc.fillRect(0, 0, canvas.width, canvas.height);
+    taivas = { avain: avain, canvas: c };
   }
-  return c;
+  return taivas.canvas;
 }
 
 // ---------- MÄET ----------

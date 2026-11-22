@@ -10,7 +10,13 @@ let aanetPaalla = true;
 // Selain sallii äänet vasta, kun käyttäjä on painanut jotain nappia.
 // Tätä kutsutaan aina, kun nappia painetaan.
 function kaynnistaAanet() {
-  if (!aaniKonteksti) aaniKonteksti = new AudioContext();
+  if (!aaniKonteksti) {
+    // Vanhoissa iPhoneissa nimi on webkitAudioContext. Jos selain ei osaa
+    // ääniä ollenkaan, peli toimii silti (ilman ääniä).
+    const Aanet = window.AudioContext || window.webkitAudioContext;
+    if (!Aanet) return;
+    aaniKonteksti = new Aanet();
+  }
   if (aaniKonteksti.state === "suspended") aaniKonteksti.resume();
 }
 
@@ -149,5 +155,86 @@ const aanet = {
   pomoKaatui() {
     piippaus("sawtooth", 300, 30, 1.0, 0.15);
     savelma("square", [523, 659, 784, 1047, 1319, 1568], 0.12, 0.08);
+  },
+
+  // ---------- PAKKASSAAREN ÄÄNET ----------
+  sulaa() {
+    // jää sulaa: kirkas helinä, joka valuu alas
+    piippaus("triangle", 1400, 500, 0.25, 0.08);
+    piippaus("sine", 900, 300, 0.3, 0.06, 0.05);
+  },
+  nuotio() {
+    // lämmin nuotio: iloinen pieni sävelmä
+    savelma("triangle", [392, 494, 587], 0.07, 0.07);
+  },
+  tuuli() {
+    // tuulenpuuska: matala humahdus
+    piippaus("sawtooth", 120, 260, 0.5, 0.035);
+    piippaus("sine", 300, 180, 0.6, 0.04, 0.1);
+  },
+  puikkoVaroitus() {
+    // jääpuikko irtoaa: pieni naksahdus
+    piippaus("square", 1500, 1100, 0.08, 0.05);
+    piippaus("square", 1300, 900, 0.08, 0.05, 0.1);
+  },
+  puikkoRikki() {
+    // jääpuikko hajoaa: kilinää
+    piippaus("triangle", 1800, 700, 0.12, 0.07);
+    piippaus("triangle", 1300, 500, 0.12, 0.05, 0.05);
+  },
+  loiskis() {
+    // ukko putosi hyiseen veteen
+    piippaus("sine", 500, 90, 0.35, 0.14);
+    piippaus("triangle", 900, 200, 0.2, 0.06, 0.05);
+  },
+  pingviini() {
+    // pingviini huomaa ukon: "kvaak!"
+    piippaus("square", 520, 700, 0.09, 0.07);
+    piippaus("square", 700, 480, 0.12, 0.07, 0.09);
+  },
+  pollo() {
+    // pöllö huhuilee ennen syöksyä: "huu-huu"
+    piippaus("sine", 420, 380, 0.14, 0.12);
+    piippaus("sine", 420, 340, 0.2, 0.12, 0.18);
+  },
+  puhallus() {
+    // Pakkasukko puhaltaa hyistä viimaa
+    piippaus("sawtooth", 500, 150, 0.9, 0.05);
+    piippaus("sine", 1200, 400, 0.9, 0.04);
+  },
+  kova() {
+    // kilahdus: jääpanssari on liian kova
+    piippaus("square", 1100, 900, 0.07, 0.08);
+    piippaus("triangle", 1600, 1500, 0.1, 0.06, 0.03);
+  },
+  jaatyy() {
+    // jää jäätyy takaisin: nouseva helinä
+    piippaus("triangle", 500, 1500, 0.3, 0.07);
+  },
+
+  // ---------- VAIKEAN TASON ÄÄNET ----------
+  liaani() {
+    // ukko tarttuu liaaniin: pieni "viuh"
+    piippaus("triangle", 300, 520, 0.12, 0.09);
+  },
+  sihina() {
+    // lanka tai tynnyri syttyi: sihisee
+    piippaus("sawtooth", 1800, 1200, 0.35, 0.03);
+    piippaus("square", 2400, 1500, 0.3, 0.02, 0.05);
+  },
+  rajahdys() {
+    // PAM! Matala jyrähdys
+    piippaus("sawtooth", 200, 25, 0.7, 0.2);
+    piippaus("square", 110, 20, 0.6, 0.16, 0.03);
+    piippaus("triangle", 600, 60, 0.25, 0.1);
+  },
+  tulva() {
+    // laava alkaa nousta: uhkaava murina
+    piippaus("sawtooth", 50, 110, 1.2, 0.12);
+    piippaus("square", 40, 80, 1.2, 0.08, 0.1);
+  },
+  kohme() {
+    // ukko on kohmeessa: hampaat kalisevat
+    for (let i = 0; i < 5; i++) piippaus("square", 900, 700, 0.04, 0.05, i * 0.07);
   },
 };

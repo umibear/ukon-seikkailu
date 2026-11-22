@@ -149,18 +149,29 @@ function piirraTahdet(aika) {
   ctx.globalAlpha = 1;
 }
 
+const KIPINAN_VARIT = [
+  "rgba(255, 80, 0, 0.8)",
+  "rgba(255, 110, 0, 0.8)",
+  "rgba(255, 140, 0, 0.8)",
+  "rgba(255, 170, 0, 0.8)",
+  "rgba(255, 200, 0, 0.8)",
+];
+
 // Lumi ja sade piirretään kaiken päälle
 function piirraSaa() {
   // Kaikki sadepisarat piirretään yhdellä kertaa (nopeampaa kuin yksi kerrallaan)
   let sataa = false;
   ctx.beginPath();
-  for (const h of saaHiukkaset) {
+  for (let i = 0; i < saaHiukkaset.length; i++) {
+    if (kevytTila && i % 2 === 1) continue; // hidas kännykkä: joka toinen hiutale riittää
+    const h = saaHiukkaset[i];
     // Lähellä oleva lumi liikkuu kameran mukana vähän (parallaksi)
     let x = (h.x - kameraX * 0.6) % canvas.width;
     if (x < 0) x += canvas.width;
 
     if (h.tyyppi === "kipina") {
-      ctx.fillStyle = "rgba(255, " + Math.floor(140 + Math.sin(h.vaihe) * 60) + ", 0, 0.8)";
+      // Kipinä hehkuu keltaisen ja punaisen välillä (värit ovat valmiina listassa)
+      ctx.fillStyle = KIPINAN_VARIT[Math.floor((Math.sin(h.vaihe) + 1) * 2.49)];
       ctx.fillRect(x, h.y, h.koko, h.koko);
     } else if (h.tyyppi === "lumi") {
       ctx.fillStyle = "white";
@@ -192,8 +203,9 @@ function piirraKuuset(vari) {
   // Kuusirivi on piirretty valmiiksi (valmiskuvat.js). Kopioidaan siitä
   // ruudun levyinen pala oikeasta kohdasta.
   const rivi = kuusetKuva(vari, ensimmainen, viimeinen);
-  const kohta = siirto - (rivi.alku - 1) * vali; // missä kohtaa riviä ruudun vasen reuna on
-  ctx.imageSmoothingEnabled = true; // kuuset liukuvat pehmeästi
+  let kohta = siirto - (rivi.alku - 1) * vali; // missä kohtaa riviä ruudun vasen reuna on
+  if (kevytTila) kohta = Math.round(kohta); // hidas kännykkä: kokonaisin pikselein (nopeampaa)
+  ctx.imageSmoothingEnabled = !kevytTila; // kuuset liukuvat pehmeästi
   ctx.drawImage(
     rivi.canvas,
     kohta, 0, canvas.width, KUUSIEN_KORKEUS, // mistä kohtaa riviä
@@ -206,12 +218,16 @@ function piirraKuuset(vari) {
 // Piirtää pehmeän valopallon. vari on muotoa "255, 140, 0" (punainen, vihreä, sininen).
 // Valopallo on piirretty valmiiksi (valmiskuvat.js), joten se vain kopioidaan.
 function hehku(x, y, sade, vari, voimakkuus) {
-  if (sade <= 0 || voimakkuus <= 0) return;
-  // Pyöristetään vähän, ettei jokaiselle pienelle erolle tarvitse omaa kuvaa
-  const valmis = hehkuKuva(vari, Math.ceil(sade), Math.round(voimakkuus * 50) / 50);
+  if (sade <= 0 || voimakkuus <= 0 || kevytTila) return; // hitaalla kännykällä hehkut jätetään pois
+  // Jokaisesta väristä on yksi valmis kuva. Koko tulee venyttämällä ja
+  // voimakkuus läpinäkyvyydellä, joten uusia kuvia ei tarvitse tehdä kesken pelin.
+  const valmis = hehkuKuva(vari);
   const vanha = ctx.globalCompositeOperation;
+  const vanhaAlpha = ctx.globalAlpha;
   ctx.globalCompositeOperation = "lighter"; // valot lisätään päälle, eivät peitä
+  ctx.globalAlpha = vanhaAlpha * Math.min(1, voimakkuus);
   ctx.drawImage(valmis, x - sade, y - sade, sade * 2, sade * 2);
+  ctx.globalAlpha = vanhaAlpha;
   ctx.globalCompositeOperation = vanha;
 }
 
@@ -241,7 +257,8 @@ function piirraPimeys(aika) {
   pc.globalCompositeOperation = "destination-out";
   // Valo on valmiiksi piirretty pehmeä pallo (valmiskuvat.js), joka venytetään oikean kokoiseksi
   const leima = haeValoLeima();
-  pc.imageSmoothingEnabled = true;
+  // Leima on jo valmiiksi pehmeä, joten sitä ei tarvitse pehmentää uudestaan (nopeampaa)
+  pc.imageSmoothingEnabled = false;
   const valo = (x, y, sade) => {
     const ruutuX = x - kameraX;
     if (ruutuX + sade < 0 || ruutuX - sade > canvas.width || sade <= 0) return; // ei näy ruudulla
@@ -262,13 +279,16 @@ function piirraPimeys(aika) {
     if (!sydan.keratty && !piilossaLuolassa(sydan)) valo(sydan.x + 13, sydan.y + 12, 50);
   }
   tulivuoriValot(valo); // laava ja liekit valaisevat (tulivuori.js)
+  ruutiValot(valo); // palavat langat ja räjähdykset (ruuti.js)
+  pakkasValot(valo); // nuotiot ja jää (pakkanen.js)
   if (kentta.valitallennus.aktiivinen) {
     valo(kentta.valitallennus.x + 10, kentta.valitallennus.y + 20, 90);
   }
 
-  ctx.imageSmoothingEnabled = true; // venytys pehmeästi, ei pikseleinä
+  // Venytetään ruudun kokoiseksi ilman pehmennystä. Pimeyden "pikselit" ovat
+  // samankokoisia kuin pelin muutkin pikselit (ZOOM), ja valot ovat niin pehmeitä,
+  // ettei eroa huomaa. Tämä oli pimeiden kenttien raskain piirto: nyt kolme kertaa nopeampi.
   ctx.drawImage(pimeysCanvas, 0, 0, canvas.width, canvas.height);
-  ctx.imageSmoothingEnabled = false;
 }
 
 // ---------- PÄIVITYS ----------

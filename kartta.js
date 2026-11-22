@@ -16,6 +16,16 @@ let karttaViestiAika = 0;
 let parhaatPisteet = []; // paras tulos jokaisesta kentästä
 let parhaatKolikot = []; // eniten kerätyt kolikot jokaisesta kentästä
 
+// Pomojen nimet kartan tietolaatikkoon (pomo ilman tyyppiä on Isäukko)
+const POMOJEN_NIMET = { magma: "MAGMAMÖRKÖ", pakkas: "PAKKASUKKO" };
+
+// Jokaisella maailmalla on omat värinsä kartalla: meri (ylhäällä ja alhaalla), ranta ja maa
+const KARTAN_VARIT = {
+  nurmi: { meriYla: "#2b7bc4", meriAla: "#4fa8e0", ranta: "#f2d98d", maa: "#7cc576" },
+  tulivuori: { meriYla: "#2a1b3d", meriAla: "#5a2a3a", ranta: "#6b5a50", maa: "#3d302e" },
+  pakkanen: { meriYla: "#173a66", meriAla: "#4f8fc4", ranta: "#bfe3f5", maa: "#f4fbff" },
+};
+
 // Haetaan kenttien nimet ja värit kerran pelin alussa
 const KENTTIEN_TIEDOT = KENTAT.map((teeKentta) => {
   const k = teeKentta();
@@ -23,7 +33,7 @@ const KENTTIEN_TIEDOT = KENTAT.map((teeKentta) => {
     nimi: k.nimi,
     vari: k.varit.taivasYla,
     pomo: Boolean(k.pomo),
-    pomonNimi: k.pomo ? (k.pomo.tyyppi === "magma" ? "MAGMAMÖRKÖ" : "ISÄUKKO") : "",
+    pomonNimi: k.pomo ? POMOJEN_NIMET[k.pomo.tyyppi] || "ISÄUKKO" : "",
     pomoTyyppi: k.pomo ? k.pomo.tyyppi || "isaukko" : "",
   };
 });
@@ -86,6 +96,9 @@ function naytaKarttaViesti(teksti) {
 // Siirrytään kartalle
 function avaaKartta() {
   tila = "kartta";
+  // Kesken jätetyn kentän pisteet unohdetaan: kartalla näkyvät vain parhaat tulokset
+  pisteet = summa(parhaatPisteet);
+  kaikkiKolikot = summa(parhaatKolikot);
   tallennaPeli(); // pelin eteneminen tallentuu aina kartalle tultaessa (peli.js)
   aloitaSiirtyma();
   kartanKohde = null;
@@ -158,21 +171,19 @@ function muidenKenttienPisteet(numero) {
 function piirraKartta(aika) {
   const m = nykyinenMaailma();
   const tulivuori = m.tyyli === "tulivuori";
+  const pakkanen = m.tyyli === "pakkanen";
+  const varit = KARTAN_VARIT[m.tyyli] || KARTAN_VARIT.nurmi;
 
-  // Meri
-  const meri = ctx.createLinearGradient(0, 0, 0, canvas.height);
-  meri.addColorStop(0, tulivuori ? "#2a1b3d" : "#2b7bc4");
-  meri.addColorStop(1, tulivuori ? "#5a2a3a" : "#4fa8e0");
-  ctx.fillStyle = meri;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  // Meri (sama taivaskuva kuin kentissä: piirretään valmiiksi vain kerran)
+  ctx.drawImage(taivasKuva(varit.meriYla, varit.meriAla), 0, 0);
   piirraAallot(aika);
 
   // Saari: ensin ranta, sitten maa sen päälle
-  ctx.fillStyle = tulivuori ? "#6b5a50" : "#f2d98d";
+  ctx.fillStyle = varit.ranta;
   ctx.beginPath();
   ctx.ellipse(400, 235, 390, 152, 0, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = tulivuori ? "#3d302e" : "#7cc576";
+  ctx.fillStyle = varit.maa;
   ctx.beginPath();
   ctx.ellipse(400, 235, 368, 134, 0, 0, Math.PI * 2);
   ctx.fill();
@@ -181,12 +192,16 @@ function piirraKartta(aika) {
   for (let i = m.alku; i <= m.loppu; i++) {
     if (!KENTTIEN_TIEDOT[i].pomo) continue;
     if (tulivuori) piirraTulivuoriKartalla(kentanPaikka(i), aika);
+    else if (pakkanen) piirraJaalinnaKartalla(kentanPaikka(i), aika); // pakkasukko.js
     else piirraVuoret(kentanPaikka(i));
   }
 
   if (tulivuori) {
     piirraLaavajoet(aika);
     for (const kivi of m.kivet) piirraKarttaKivi(kivi.x, kivi.y);
+  } else if (pakkanen) {
+    piirraJaalammet(); // pakkanen.js
+    for (const puu of m.puut) piirraLumikuusi(puu.x, puu.y);
   } else {
     for (const puu of PUUT) piirraPuu(puu.x, puu.y);
   }
@@ -328,7 +343,13 @@ function piirraKenttaPallo(i, aika) {
   const tiedot = KENTTIEN_TIEDOT[i];
 
   // Pomo nukkuu kenttänsä yläpuolella, kunnes se voitetaan
-  if (tiedot.pomoTyyppi === "magma" && !valmis) {
+  if (tiedot.pomoTyyppi === "pakkas" && !valmis) {
+    piirraPakkasukkoKuvake(p.x, p.y - 28, aika); // pakkasukko.js
+    if (auki) {
+      const z = Math.floor(aika / 400) % 3;
+      reunaTeksti("z".repeat(z + 1), p.x - 44, p.y - 80 - z * 6, 16, "left");
+    }
+  } else if (tiedot.pomoTyyppi === "magma" && !valmis) {
     piirraMagmaKuvake(p.x, p.y - 50, aika);
     if (auki) {
       const z = Math.floor(aika / 400) % 3;
@@ -386,6 +407,8 @@ function piirraKenttaPallo(i, aika) {
     const ruutu = Math.floor(aika / 300) % 2;
     ctx.drawImage(kuvat.lippu, ruutu * 16, 0, 16, 32, p.x + 12, p.y - 54, 24, 48);
   }
+  // Vaikealla läpäisty kenttä saa tähden (vaikea.js)
+  if (vaikeatLapaisty[i]) piirraTahti(p.x - 20, p.y - 22, 11 + Math.sin(aika / 300 + i) * 1.5);
 }
 
 function piirraLukko(x, y) {
@@ -422,6 +445,8 @@ function piirraKartanTekstit(aika) {
   const mNro = maailmanNumero(kartanKohta);
   reunaTeksti("Maailma " + (mNro + 1) + ": " + MAAILMAT[mNro].nimi, canvas.width / 2, 40, 28, "center");
   reunaTeksti("Pisteet: " + pisteet, 12, 30, 20, "left", "gold");
+  // Vaikealla näkyy, montako tähteä on jo kerätty (vaikea.js)
+  if (vaikea) reunaTeksti("★ VAIKEA  " + vaikeitaLapaisty() + " / " + KENTAT.length, 12, 54, 15, "left", "#ff9d5c");
   for (const pl of pelaajat) piirraElamat(pl, (pl.numero - 1) * 40);
 
   if (karttaViestiAika > 0) {
@@ -439,6 +464,7 @@ function piirraKartanTekstit(aika) {
 
   let alarivi = "Ei vielä läpäisty";
   if (parhaatPisteet[i] !== undefined) alarivi = "Paras: " + parhaatPisteet[i] + " pistettä";
+  if (parhaatPisteet[i] !== undefined && vaikea && !vaikeatLapaisty[i]) alarivi += "   (tähti ★ puuttuu)";
   else if (tiedot.pomo) alarivi = "Varo: täällä nukkuu " + tiedot.pomonNimi + "!";
   reunaTeksti(alarivi, canvas.width / 2, 418, 16, "center", "gold");
 
