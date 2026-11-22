@@ -409,6 +409,8 @@ function piirraKenttaPallo(i, aika) {
   }
   // Vaikealla läpäisty kenttä saa tähden (vaikea.js)
   if (vaikeatLapaisty[i]) piirraTahti(p.x - 20, p.y - 22, 11 + Math.sin(aika / 300 + i) * 1.5);
+  // Kentän aarre on löydetty: timantti (aarteet.js)
+  if (aarteet[i]) piirraTimantti(p.x - 28, p.y + 6, 14, "#5ad1e6", "#d9fbff");
 }
 
 function piirraLukko(x, y) {
@@ -447,6 +449,10 @@ function piirraKartanTekstit(aika) {
   reunaTeksti("Pisteet: " + pisteet, 12, 30, 20, "left", "gold");
   // Vaikealla näkyy, montako tähteä on jo kerätty (vaikea.js)
   if (vaikea) reunaTeksti("★ VAIKEA  " + vaikeitaLapaisty() + " / " + KENTAT.length, 12, 54, 15, "left", "#ff9d5c");
+  // Montako aarretta on löydetty (aarteet.js)
+  const aarreY = vaikea ? 64 : 42;
+  piirraTimantti(13, aarreY, 15, "#5ad1e6", "#d9fbff");
+  reunaTeksti(aarteitaLoydetty() + " / " + SALAKUOPAT.length, 34, aarreY + 13, 15, "left", "#9ff5ff");
   for (const pl of pelaajat) piirraElamat(pl, (pl.numero - 1) * 40);
 
   if (karttaViestiAika > 0) {
@@ -464,6 +470,7 @@ function piirraKartanTekstit(aika) {
 
   let alarivi = "Ei vielä läpäisty";
   if (parhaatPisteet[i] !== undefined) alarivi = "Paras: " + parhaatPisteet[i] + " pistettä";
+  if (parhaatPisteet[i] !== undefined && parasAika(i) > 0) alarivi += ", aika " + muotoileTarkkaAika(parasAika(i)); // varjo.js
   if (parhaatPisteet[i] !== undefined && vaikea && !vaikeatLapaisty[i]) alarivi += "   (tähti ★ puuttuu)";
   else if (tiedot.pomo) alarivi = "Varo: täällä nukkuu " + tiedot.pomonNimi + "!";
   reunaTeksti(alarivi, canvas.width / 2, 418, 16, "center", "gold");

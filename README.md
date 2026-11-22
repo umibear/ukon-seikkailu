@@ -23,9 +23,42 @@ Kun kentän pääsee läpi vaikealla, kartalle tulee tähti ★.
 Vihujen temput on lueteltu tiedoston `vaikea.js` alussa, ja kenttien muutokset ovat tiedostossa `vaikeatkentat.js`.
 Kokeile lisätä kenttään oma liaani tai tynnyri!
 
+## 💎 Salakuopat, aarteet ja varjo
+
+**Salakuopat.** Jokaisessa kentässä on yksi kuoppa, joka ei olekaan vaarallinen. Se näyttää aivan
+tavalliselta kuopalta, laavalta tai avannolta, mutta kun siihen putoaa, päätyy salaiseen
+**aarrekammioon**! Siellä odottaa timantti (+1000 pistettä) ja sydän. Ulos pääsee kävelemällä oikealle.
+Pieni vihje: salakuopan suulla välähtää silloin tällöin tähti. Löydetyt aarteet näkyvät kartalla,
+ja kun kaikki on löydetty, Ukosta tulee **kultainen**.
+
+**Varjo.** Peli muistaa jokaisen kentän parhaan ajan. Kun pelaat kentän uudestaan, rinnallasi juoksee
+tumma varjo, joka kulkee täsmälleen niin kuin sinä kuljit parhaalla kerrallasi. Ehditkö maaliin ennen sitä?
+Varjon saa pois taukovalikosta.
+
+Salakuoppien paikat ovat tiedostossa `aarteet.js` (lista `SALAKUOPAT`): kokeile siirtää salakuoppa toiseen kuoppaan!
+Varjon koodi on tiedostossa `varjo.js`.
+
+## 🔨 Kenttäpaja: rakenna omia kenttiä
+
+Alkuvalikosta **Rakenna kenttä** vie Omalle saarelle. Sinne mahtuu 8 omaa kenttää.
+
+1. Paina **+ Rakenna uusi kenttä** ja valitse maailma (se päättää, miltä kenttä näyttää ja mitä vihuja siinä on).
+2. Valitse palikka vasemmalta ja napauta kenttää. Sormea tai hiirtä vetämällä tulee monta peräkkäin.
+   Saman palikan napautus uudestaan ottaa sen pois.
+3. Oikealla ovat työkalut: **▶** kokeilee kenttää heti, ✋ siirtää kenttää, pyyhekumi, ↩ kumoa, « » vieritys ja ✔ valmis.
+4. Kokeilussa kuolema ei haittaa: pääset takaisin muokkaamaan siihen kohtaan, missä kävi huonosti.
+
+Valmiin kentän voi **jakaa linkkinä** (Jaa-nappi). Kun kaveri avaa linkin, kenttä ilmestyy hänen Omalle saarelleen.
+Koko kenttä on itse linkissä, joten mitään ei tallenneta nettiin.
+
+Tietokoneella: nuolet tai A D vierittävät, Z kumoaa, Enter kokeilee ja Esc palaa takaisin.
+Palikat ovat tiedostossa `omatkentat.js` ja paja tiedostossa `paja.js`.
+
 ## ▶ Pelaa: https://umibear.github.io/ukon-seikkailu/
 
 Toimii tietokoneella ja kännykän selaimessa.
+Kännykässä pelin saa aloitusnäytölle kuin sovelluksen: selaimen valikosta **Lisää aloitusnäytölle**.
+Se aukeaa koko ruudulle ja päivittyy itsestään, koska peli ladataan aina netistä.
 
 ## Ohjaus
 

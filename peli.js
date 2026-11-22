@@ -239,6 +239,11 @@ addEventListener("keydown", (e) => {
   // uudestaan, eli nappia pitää painaa joka kerta erikseen.
   if (!e.repeat) {
     const tilaEnnen = tila; // muistetaan, ettei kentän aloitus Enterillä ammu heti
+    // Kenttäpajassa on omat näppäimensä (paja.js)
+    if (pajaNappain(e.code)) {
+      e.preventDefault();
+      return;
+    }
     const hyvaksy = e.code === "Space" || e.code === "Enter";
 
     // Valikoissa (alkuruutu ja tauko) liikutaan ↑ ↓ ja valitaan Enterillä tai välilyönnillä.
@@ -367,6 +372,7 @@ function nollaaPeli() {
   parhaatPisteet = [];
   parhaatKolikot = [];
   vaikeatLapaisty = [];
+  aarteet = []; // löydetyt aarteet (aarteet.js)
   avattu = 0; // vain ensimmäinen kenttä on auki
   kartanKohta = 0;
   uusiKentta = -1;
@@ -375,6 +381,10 @@ function nollaaPeli() {
 // Kun elämät loppuvat: nykyinen maailma alkaa alusta, mutta
 // aiemmat maailmat pysyvät läpäistyinä.
 function aloitaMaailmaAlusta() {
+  if (omaPeli) {
+    aloitaOmaUudestaan(); // omassa kentässä R aloittaa saman kentän alusta (paja.js)
+    return;
+  }
   const numero = maailmanNumero(kenttaNumero);
   const m = MAAILMAT[numero];
   for (const pl of [pelaaja1, pelaaja2]) {
@@ -400,6 +410,10 @@ function aloitaMaailmaAlusta() {
 
 // Kun kenttä on läpäisty ja painetaan välilyöntiä
 function seuraavaKentta() {
+  if (omaPeli) {
+    avaaPaja(); // omasta kentästä palataan Omalle saarelle (paja.js)
+    return;
+  }
   if (kenttaNumero === KENTAT.length - 1) {
     // Viimeinen kenttä läpäisty: koko peli voitettu!
     tila = "voitto";
@@ -434,6 +448,10 @@ function muotoileAika(sekunnit) {
 
 // Lasketaan bonukset kentän lopussa ja tehdään pistelaskelma
 function laskeKentanTulos() {
+  if (omaPeli) {
+    omaKenttaLapaisty(); // omalla kentällä on oma pieni laskelmansa (paja.js)
+    return;
+  }
   // Laavapalloja ei voi tuhota, ja kipinät sammuvat itsestään, joten niitä ei lasketa
   const tuhottavat = kentta.viholliset.filter((v) => !v.eiLasketa);
   const vihujaYhteensa = tuhottavat.length + kentta.lentovihut.length;
@@ -459,6 +477,9 @@ function laskeKentanTulos() {
   pisteet = summa(parhaatPisteet);
   kaikkiKolikot = summa(parhaatKolikot);
 
+  // Oliko tämä kentän paras aika? Silloin reitistä tulee uusi varjo (varjo.js)
+  const paras = tallennaParasAika();
+
   // Jokainen rivi on [teksti vasemmalla, teksti oikealla]
   tulos = [
     ["Kolikot", kentanKolikot + " / " + kentta.kolikot.length],
@@ -470,10 +491,13 @@ function laskeKentanTulos() {
         muotoileAika(kentta.tavoiteAika) +
         ")",
     ],
+    ["Paras aika", muotoileTarkkaAika(paras.paras) + (paras.uusi ? "  UUSI!" : "")],
     ["Aikabonus", "+" + aikaBonus],
     ["Kaikki kolikot", kaikkiKolikotKeratty ? "+" + kolikkoBonus : "-"],
     ["Kaikki vihut", kaikkiVihutTuhottu ? "+" + vihuBonus : "-"],
   ];
+  // Aarteen pisteet on jo laskettu mukaan, kun se kerättiin (aarteet.js)
+  if (kentta.aarre && kentta.aarre.keratty) tulos.push(["Aarre löytyi!", "+" + PISTEET_AARRE]);
   if (vaikea) tulos.push(["★ Vaikea taso", "+" + vaikeaBonus]);
   tulos.push(["PISTEET", "" + pisteet]);
 }
@@ -518,6 +542,7 @@ function tallennaPeli() {
     parhaatPisteet: parhaatPisteet,
     parhaatKolikot: parhaatKolikot,
     vaikeatLapaisty: vaikeatLapaisty,
+    aarteet: aarteet,
     elamat: [pelaaja1.elamat, pelaaja2.elamat],
   };
   try {
@@ -538,6 +563,7 @@ function jatkaPelia() {
   parhaatPisteet = korjaa(t.parhaatPisteet);
   parhaatKolikot = korjaa(t.parhaatKolikot);
   vaikeatLapaisty = (t.vaikeatLapaisty || []).map((lapaisty) => Boolean(lapaisty));
+  aarteet = (t.aarteet || []).map((loydetty) => Boolean(loydetty));
   // Onko peliin tullut uusia kenttiä tallennuksen jälkeen? Jos viimeinen
   // avattu kenttä on jo läpäisty, seuraava kenttä aukeaa.
   if (avattu < KENTAT.length - 1 && parhaatPisteet[avattu] !== undefined) {
@@ -566,8 +592,9 @@ function valikonRivit() {
   if (tila === "tauko") {
     return [
       { id: "jatkaTaukoa", teksti: "Jatka peliä" },
-      { id: "kartalle", teksti: "Palaa kartalle" },
+      { id: "kartalle", teksti: omaPeli ? "Palaa pajaan" : "Palaa kartalle" },
       { id: "musiikki", teksti: "Musiikki", lisa: musiikkiPaalla ? "päällä" : "pois" },
+      { id: "varjo", teksti: "Varjo", lisa: varjoPaalla ? "päällä" : "pois" }, // parhaan ajon varjo (varjo.js)
       { id: "poistu", teksti: "Poistu pelistä" },
     ];
   }
@@ -588,6 +615,8 @@ function valikonRivit() {
   // Kännykässä vaikeus vaihtuu napauttamalla riviä, joten nuolia ei näytetä
   const vaikeusLisa = kosketusOhjaus ? vaikeus : "◀  " + vaikeus + "  ▶";
   rivit.push({ id: "vaikeus", teksti: "Vaikeus", lisa: vaikeusLisa, lisaVari: vaikea ? "#ff9d5c" : null });
+  // Kenttäpaja: omien kenttien rakentaminen (paja.js)
+  rivit.push({ id: "paja", teksti: "Rakenna kenttä", lisa: omatKentat.length > 0 ? omatKentat.length + " omaa" : "uutta!" });
   rivit.push({ id: "ohjeet", teksti: "Ohjeet" });
   return rivit;
 }
@@ -630,6 +659,9 @@ function valitseRivi(id) {
   } else if (id === "vaikeus") {
     vaihdaVaikeus(); // vaikea.js
     aanet.laskuri();
+  } else if (id === "paja") {
+    avaaPaja(); // paja.js
+    aanet.laskuri();
   } else if (id === "ohjeet") {
     tila = "ohjeet";
     aanet.laskuri();
@@ -638,10 +670,19 @@ function valitseRivi(id) {
   } else if (id === "musiikki") {
     vaihdaMusiikki();
     aanet.laskuri();
+  } else if (id === "varjo") {
+    vaihdaVarjo(); // varjo.js
+    aanet.laskuri();
   } else if (id === "kartalle") {
-    avaaKartta();
+    if (omaPeli) poistuOmastaKentasta(); // paja.js
+    else avaaKartta();
   } else if (id === "poistu") {
-    poistuPelista();
+    if (omaPeli) {
+      // Omasta kentästä poistutaan suoraan alkuvalikkoon (seikkailun tallennus ei muutu)
+      lopetaOmaPeli();
+      suljePaja();
+      valikonValinta = 0;
+    } else poistuPelista();
   }
 }
 
@@ -718,7 +759,8 @@ canvas.addEventListener("mousemove", (e) => {
 const VALIKON_LEVEYS = 400;
 function valikonAsettelu() {
   const rivit = valikonRivit();
-  const RIVIN_KORKEUS = rivit.length > 4 ? 42 : 48; // viisi riviä mahtuu vain vähän matalampina
+  // Mitä enemmän rivejä, sitä matalampia niiden pitää olla, että kaikki mahtuvat
+  const RIVIN_KORKEUS = rivit.length > 5 ? 36 : rivit.length > 4 ? 42 : 48;
   const otsikko = tila === "tauko" ? 64 : 0; // taukovalikossa on otsikko "TAUKO"
   const korkeus = otsikko + rivit.length * RIVIN_KORKEUS + 16;
   const keskiY = tila === "tauko" ? 210 : 302;
@@ -734,6 +776,7 @@ function valikonAsettelu() {
 }
 
 function tarkistaEnnatys() {
+  if (omaPeli) return; // omien kenttien pisteet eivät ole ennätyksiä
   if (pisteet > ennatys) {
     ennatys = pisteet;
     uusiEnnatys = true;
@@ -747,19 +790,25 @@ function tarkistaEnnatys() {
 }
 
 // Lataa kentän ja laittaa pelaajan sen alkuun
-function aloitaKentta(numero) {
+// oma = tiedot omasta kentästä, kun pelataan Kenttäpajassa tehtyä kenttää (paja.js).
+// Silloin numero kertoo vain, minkä kentän musiikki soi.
+function aloitaKentta(numero, oma) {
+  omaPeli = oma || null;
   kenttaNumero = numero;
   aloitaMusiikkiAlusta(); // jokaisen kentän kappale alkaa alusta (musiikki.js)
   alustaVahvistus = 0;
-  kentta = luoKentta(numero); // kutsutaan kentän funktiota, esim. kentta1() (vaikea.js)
+  // Kutsutaan kentän funktiota, esim. kentta1() (vaikea.js). Oma kenttä tehdään ruudukosta (omatkentat.js).
+  kentta = omaPeli ? omaKentaksi(omaPeli.kentta) : luoKentta(numero);
   valmisteleKentta(kentta);
 
   // Pisteisiin lasketaan muiden kenttien parhaat tulokset. Jos pelaat
   // kentän uudestaan, siitä jää voimaan vain parempi tulos.
-  pisteet = muidenKenttienPisteet(numero);
+  pisteet = omaPeli ? 0 : muidenKenttienPisteet(numero);
   kentanKolikot = 0;
   kentanVihut = 0;
   kentanAika = 0;
+  kammiossa = false; // kenttä alkaa aina kentästä, ei aarrekammiosta (aarteet.js)
+  aloitaVarjo(); // parhaan ajon varjo mukaan ja uusi nauhoitus käyntiin (varjo.js)
   tulipallot = [];
   hiukkaset = [];
   tekstit = [];
@@ -979,6 +1028,7 @@ function siirraPelaajaAlkuun() {
   pelaaja.turvaX = pelaaja.x;
   pelaaja.turvaY = pelaaja.y;
   nollaaLiike(pelaaja);
+  kammiossa = false;
   kameraHyppaa = true;
 }
 
@@ -1000,6 +1050,7 @@ function nollaaLiike(pl) {
 
 // Kutsutaan, kun vihu osuu ukkoon tai ukko putoaa kuoppaan
 function menetaElama() {
+  if (testiKuolema()) return; // oman kentän kokeilu: palataan muokkaamaan (paja.js)
   pelaaja.elamat--; // sama kuin pelaaja.elamat = pelaaja.elamat - 1
   aanet.osuma();
   tarina = 15; // ruutu tärisee
@@ -1771,6 +1822,7 @@ function paivita(dt) {
   // Nämä liikkuvat aina, vaikka peli olisi pysähdyksissä
   paivitaTehosteet(dt);
   paivitaMusiikki(); // musiikki.js
+  if (paivitaPaja(dt)) return; // Kenttäpajassa itse peli ei liiku (paja.js)
   if (tila === "tauko") return; // tauolla kaikki on pysähdyksissä
   if (alustaVahvistus > 0) alustaVahvistus -= dt;
   for (const p of pilvet) p.x += p.nopeus * dt;
@@ -1792,6 +1844,13 @@ function paivita(dt) {
 
   // Kello käy (dt / 60, koska 60 ruutua = 1 sekunti)
   kentanAika += dt / 60;
+  nauhoitaVarjo(); // ukon reitti muistiin (varjo.js)
+
+  // Salaisessa aarrekammiossa vain pelaajat liikkuvat: kenttä odottaa ylhäällä (aarteet.js)
+  if (kammiossa) {
+    paivitaKammio(dt);
+    return;
+  }
 
   // Liikkuvat tasot liikkuvat ja kuljettavat pelaajia mukanaan
   for (const t of kentta.liikkuvatTasot) {
@@ -1910,6 +1969,30 @@ function paivita(dt) {
   if (paivitaPomo(dt)) return;
 
   // 9. Tulipallot lentävät
+  paivitaTulipallot(dt);
+
+  // 10.-12. Jokainen pelaaja kerää kolikoita ja sydämiä
+  for (const pl of elavatPelaajat()) {
+    pelaaja = pl;
+    keraaAsiat();
+    if (tila !== "peli") return;
+  }
+
+  // 10c. Salaiset luolat: kun ukko on luolassa, kallio muuttuu läpinäkyväksi
+  for (const l of kentta.salaisetLuolat) {
+    const sisalla = elavatPelaajat().some((pl) => osuu(pl, l.sisus));
+    const tavoite = sisalla ? 0.15 : 1; // kuinka näkyvä kallio on
+    l.nakyvyys += (tavoite - l.nakyvyys) * Math.min(1, 0.12 * dt);
+    if (sisalla && !l.loydetty) {
+      l.loydetty = true;
+      aanet.salaisuus();
+      lisaaTeksti(l.x + l.leveys / 2, l.y - 10, "SALAINEN LUOLA!");
+    }
+  }
+}
+
+// Tulipallot lentävät, polttavat vihuja ja sammuvat seiniin
+function paivitaTulipallot(dt) {
   const kaikkiVihut = kentta.viholliset.concat(kentta.lentovihut);
   for (const t of tulipallot) {
     t.x += TULIPALLON_NOPEUS * t.suunta * dt;
@@ -1969,25 +2052,6 @@ function paivita(dt) {
   }
   // Pidetään listassa vain pallot, jotka ovat vielä elossa
   tulipallot = tulipallot.filter((t) => t.elossa);
-
-  // 10.-12. Jokainen pelaaja kerää kolikoita ja sydämiä
-  for (const pl of elavatPelaajat()) {
-    pelaaja = pl;
-    keraaAsiat();
-    if (tila !== "peli") return;
-  }
-
-  // 10c. Salaiset luolat: kun ukko on luolassa, kallio muuttuu läpinäkyväksi
-  for (const l of kentta.salaisetLuolat) {
-    const sisalla = elavatPelaajat().some((pl) => osuu(pl, l.sisus));
-    const tavoite = sisalla ? 0.15 : 1; // kuinka näkyvä kallio on
-    l.nakyvyys += (tavoite - l.nakyvyys) * Math.min(1, 0.12 * dt);
-    if (sisalla && !l.loydetty) {
-      l.loydetty = true;
-      aanet.salaisuus();
-      lisaaTeksti(l.x + l.leveys / 2, l.y - 10, "SALAINEN LUOLA!");
-    }
-  }
 }
 
 // Haamu herää henkiin yhdellä elämällä kaverinsa (pelaaja) vieressä
@@ -2068,6 +2132,8 @@ function keraaAsiat() {
     laskeKentanTulos();
     tila = "kenttaValmis";
     ruutuAika = 0;
+    // Oman kentän kokeilu: maaliin pääsy vie takaisin muokkaukseen (paja.js)
+    if (omaPeli && omaPeli.tyyppi === "testi") pajaPaluu = { viesti: "KENTTÄ TOIMII! ✔", x: pelaaja.x };
   }
 }
 
@@ -2183,7 +2249,8 @@ function paivitaPelaaja(dt) {
   }
 
   // Ei päästetä pelaajaa kentän reunojen ulkopuolelle
-  if (pelaaja.x < 0) pelaaja.x = 0;
+  // (aarrekammio on kentän vasemmalla puolella, ja sen seinät pitävät ukon sisällä)
+  if (pelaaja.x < 0 && !kammiossa) pelaaja.x = 0;
   if (pelaaja.x + pelaaja.leveys > kentta.leveys) {
     pelaaja.x = kentta.leveys - pelaaja.leveys;
   }
@@ -2242,7 +2309,8 @@ function paivitaPelaaja(dt) {
   tarkistaJouset();
   tartuLiaaniin(); // liaanit.js
 
-  // 6. Putosiko pelaaja kuoppaan?
+  // 6. Putosiko pelaaja kuoppaan? Salakuopasta pääsee aarrekammioon! (aarteet.js)
+  if (putosiSalakuoppaan()) return;
   if (pelaaja.y > canvas.height) menetaElama();
 }
 
@@ -2293,8 +2361,13 @@ function paivitaHiukkaset(dt) {
 // Siirtää kameraa niin, että pelaaja on ruudun keskellä
 function paivitaKamera(dt) {
   if (dt === undefined) dt = 1;
+  if (pajassa()) return; // pajassa kameraa liikutetaan itse (paja.js)
   if (tila === "alku") {
     kameraX = 0;
+    return;
+  }
+  if (kammiossa) {
+    kameraX = KAMMION_X; // aarrekammio on tasan ruudun kokoinen (aarteet.js)
     return;
   }
   let kohde;
@@ -2600,7 +2673,9 @@ function piirraLiikkuvaTaso(t) {
 function piirraPelaaja(aika) {
   // Suojassa ukko vilkkuu: joka toisella hetkellä sitä ei piirretä ollenkaan
   if (!pelaaja.haamu && pelaaja.suojaAika > 0 && Math.floor(aika / 100) % 2 === 0) return;
-  const kuva = pelaaja.numero === 2 ? kuvat.ukko2 : kuvat.ukko;
+  // Kun kaikki aarteet on löydetty, Ukko on kultainen (aarteet.js)
+  const ukonKuva = kaikkiAarteetLoydetty() ? kultainenUkko() : kuvat.ukko;
+  const kuva = pelaaja.numero === 2 ? kuvat.ukko2 : ukonKuva;
 
   // Valitaan ukon ruutu:
   // ilmassa = ruutu 1 (jalat harallaan), kävellessä vaihdellaan 0 ja 1
@@ -2988,7 +3063,8 @@ function naytolla(x, leveys, vara) {
 
 // Piirtää kentän ja kaiken siinä olevan
 function piirraMaailma(aika) {
-  piirraTausta(aika);
+  if (kammiossa) piirraKammionTausta(aika); // aarrekammion takaseinä (aarteet.js)
+  else piirraTausta(aika);
 
   // Siirretään koko kenttää vasemmalle kameran verran.
   // Kaikki tämän ja ctx.restore()-rivin välissä piirretty liikkuu kameran mukana.
@@ -3045,6 +3121,7 @@ function piirraMaailma(aika) {
     ctx.restore();
   }
 
+  piirraAarre(aika); // salakuopan vihje ja aarrekammion aarre (aarteet.js)
   piirraPakkanen(aika); // jäälohkot, nuotiot ja jääpuikot (pakkanen.js)
   piirraLippu(kentta.valitallennus, aika, !kentta.valitallennus.aktiivinen);
   if (maaliAuki()) piirraLippu(kentta.maali, aika, false);
@@ -3081,6 +3158,7 @@ function piirraMaailma(aika) {
     ctx.globalAlpha = 1;
   }
 
+  piirraVarjo(aika); // parhaan ajon varjo juoksee mukana (varjo.js)
   if (tila !== "alku") piirraPelaajat(aika);
   piirraPakkanenEtuala(aika); // lumipallot ja tuulen viirut (pakkanen.js)
   piirraTulva(aika); // nouseva laava peittää kaiken alleen (ruuti.js)
@@ -3095,19 +3173,16 @@ function piirraMaailma(aika) {
 function piirraTiedot() {
   // Kolikot ja pisteet vasemmassa yläkulmassa
   ctx.drawImage(kuvat.kolikko, 0, 0, 32, 32, 8, 8, 32, 32);
-  reunaTeksti(
-    kentanKolikot + " / " + kentta.kolikot.length,
-    44,
-    33,
-    24,
-    "left",
-  );
+  const kolikkoTeksti = kentanKolikot + " / " + kentta.kolikot.length;
+  reunaTeksti(kolikkoTeksti, 44, 33, 24, "left");
+  // Timantti kertoo, onko tämän kentän aarre löydetty (aarteet.js)
+  piirraAarreTieto(58 + kolikkoTeksti.length * 13, 13);
   reunaTeksti("Pisteet: " + pisteet, 12, 65, 20, "left", "gold");
   if (vaikea) reunaTeksti("★ VAIKEA", 12, 88, 14, "left", "#ff9d5c");
 
   // Kentän nimi ja kello keskellä. Kello muuttuu punaiseksi,
   // kun tavoiteaika on mennyt ohi.
-  const nimi = "Kenttä " + (kenttaNumero + 1) + ": " + kentta.nimi;
+  const nimi = omaPeli ? kentta.nimi : "Kenttä " + (kenttaNumero + 1) + ": " + kentta.nimi;
   reunaTeksti(nimi, canvas.width / 2, 30, 20, "center");
   const kellonVari = kentanAika > kentta.tavoiteAika ? "#ff6b6b" : "white";
   reunaTeksti(
@@ -3118,6 +3193,10 @@ function piirraTiedot() {
     "center",
     kellonVari,
   );
+  // Kellon vieressä näkyy aika, joka pitää voittaa (varjo.js)
+  if (!omaPeli && parasAika(kenttaNumero) > 0) {
+    reunaTeksti("paras " + muotoileTarkkaAika(parasAika(kenttaNumero)), canvas.width / 2 + 34, 57, 13, "left", "#bfe8ff");
+  }
   if (!aanetPaalla)
     reunaTeksti("Äänet pois (M)", canvas.width / 2, 80, 14, "center");
 
@@ -3134,7 +3213,7 @@ function piirraTiedot() {
   if (alustaVahvistus > 0 && tila === "peli") {
     const maailma = maailmanNumero(kenttaNumero) + 1;
     reunaTeksti(
-      ohje("Paina R uudestaan:", "Paina ↻ uudestaan:") + " maailma " + maailma + " alkaa alusta!",
+      ohje("Paina R uudestaan:", "Paina ↻ uudestaan:") + (omaPeli ? " kenttä alkaa alusta!" : " maailma " + maailma + " alkaa alusta!"),
       canvas.width / 2,
       150,
       24,
@@ -3414,19 +3493,24 @@ function piirra(aika) {
     else piirraOhjeet();
   } else if (tila === "kartta") {
     piirraKartta(aika);
+  } else if (tila === "paja") {
+    piirraPaja(aika); // Oma saari (paja.js)
+  } else if (tila === "muokkaus") {
+    piirraMuokkaus(aika); // oman kentän rakentaminen (paja.js)
   } else {
     piirraMaailma(aika);
     piirraPimeys(aika);
     piirraSaa();
     piirraTiedot();
   }
+  paivitaPajaLuokka(); // kännykän ohjausnapit piiloon pajassa (paja.js)
 
   if (tila === "tauko") piirraTauko(aika);
 
   if (tila === "kenttaValmis") {
     tummenna();
     reunaTeksti(
-      "Kenttä " + (kenttaNumero + 1) + " läpäisty!",
+      omaPeli ? kentta.nimi + " läpäisty!" : "Kenttä " + (kenttaNumero + 1) + " läpäisty!",
       canvas.width / 2,
       75,
       40,
@@ -3435,8 +3519,9 @@ function piirra(aika) {
 
     // Pistelaskelman rivit, yksi kerrallaan
     const rivit = naytettavatRivit();
+    const rivivali = tulos.length > 9 ? 27 : tulos.length > 8 ? 30 : 34; // pitkä laskelma mahtuu tiiviimpänä
     for (let i = 0; i < rivit; i++) {
-      const y = 135 + i * 34;
+      const y = 135 + i * rivivali;
       const viimeinen = i === tulos.length - 1;
       const koko = viimeinen ? 28 : 22;
       const vari = viimeinen ? "gold" : "white";
@@ -3501,7 +3586,7 @@ function piirra(aika) {
       "gold",
     );
     piirraEnnatys(320, aika);
-    const maailma = "maailma " + (maailmanNumero(kenttaNumero) + 1);
+    const maailma = omaPeli ? "kenttä" : "maailma " + (maailmanNumero(kenttaNumero) + 1);
     reunaTeksti(
       ohje("Paina R: " + maailma + " alkaa alusta", "Napauta: " + maailma + " alkaa alusta"),
       canvas.width / 2,
@@ -3512,6 +3597,7 @@ function piirra(aika) {
   }
 
 
+  piirraOmaPeli(); // omassa kentässä nappi, josta pääsee takaisin pajaan (paja.js)
   piirraSiirtyma(); // ruudun vaihdon musta ympyrä kaiken päälle
   ctx.restore();
 }

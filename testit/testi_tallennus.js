@@ -77,6 +77,8 @@ T.paina("ArrowRight");
 tarkista(T.ev("vaikea") === true, "→ Vaikeus-rivillä valitsee vaikean");
 T.paina("Enter");
 tarkista(T.ev("vaikea") === false, "Enter Vaikeus-rivillä vaihtaa takaisin normaaliin");
+T.paina("ArrowDown");
+tarkista(valittu() === "paja", "↓ valitsee Rakenna kenttä -rivin");
 T.paina("ArrowDown"); T.paina("ArrowDown");
 tarkista(valittu() === "jatka", "alimmasta rivistä ↓ hyppää ylimpään");
 T.paina("ArrowUp");

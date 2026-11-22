@@ -347,7 +347,7 @@ function tyonnaPelaajaa(dx) {
 
 // Pureeko pakkanen tässä kentässä? (vain vaikealla ja vain lumikentissä)
 function pakkanenPuree() {
-  return vaikea && kentta.laatat === "lumi";
+  return vaikea && kentta.laatat === "lumi" && !kammiossa; // aarrekammiossa on lämmintä (aarteet.js)
 }
 
 // Ukon lämpö hupenee. Palauttaa true, jos ukko jäätyi ja menetti elämän.

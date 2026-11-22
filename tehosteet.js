@@ -159,6 +159,7 @@ const KIPINAN_VARIT = [
 
 // Lumi ja sade piirretään kaiken päälle
 function piirraSaa() {
+  if (kammiossa) return; // aarrekammioon ei sada (aarteet.js)
   // Kaikki sadepisarat piirretään yhdellä kertaa (nopeampaa kuin yksi kerrallaan)
   let sataa = false;
   ctx.beginPath();
@@ -240,7 +241,7 @@ const PIMEYDEN_TARKKUUS = 0.5;
 let pimeysCanvas = null;
 
 function piirraPimeys(aika) {
-  if (!kentta.pimeys) return;
+  if (!kentta.pimeys || kammiossa) return; // aarrekammiossa on oma valonsa (aarteet.js)
   if (!pimeysCanvas) {
     pimeysCanvas = document.createElement("canvas");
     pimeysCanvas.width = canvas.width * PIMEYDEN_TARKKUUS;

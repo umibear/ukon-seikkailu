@@ -63,6 +63,7 @@ function vaihdaVaikeus() {
 function luoKentta(numero) {
   const k = KENTAT[numero]();
   if (vaikea && VAIKEAT_KENTAT[numero]) VAIKEAT_KENTAT[numero](k);
+  lisaaAarre(k, numero); // salakuoppa ja aarrekammio (aarteet.js)
   return k;
 }
 

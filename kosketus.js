@@ -29,7 +29,7 @@ function koitaKokoRuutua() {
 // Ruudun napautus. Valikoissa napautetaan riviä (peli.js: osoitaRuutua),
 // muualla napautus on sama kuin välilyönti (jatkaa, valitsee kentän).
 function napautaRuutua(sormi) {
-  if (tila === "peli") return; // kesken pelin napautus ei tee mitään
+  if (tila === "peli" || pajassa()) return; // kesken pelin napautus ei tee mitään, ja pajalla on omat napautuksensa (paja.js)
   if (tila === "alku" || tila === "tauko" || tila === "ohjeet") {
     osoitaRuutua(sormi.clientX, sormi.clientY, true);
     return;

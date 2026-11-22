@@ -7,6 +7,12 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <title>Ukon seikkailu</title>
+  <!-- Näiden avulla pelin voi lisätä kännykän aloitusnäytölle: silloin se saa oman
+       kuvakkeen ja aukeaa koko ruudulle. Peli ladataan silti aina netistä, joten
+       uusin versio tulee itsestään. -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="kuvat/kuvake-192.png">
+  <link rel="apple-touch-icon" href="kuvat/kuvake-192.png">
   <style>
     body {
       background: #222;
@@ -47,6 +53,8 @@
       object-fit: contain;
     }
     body.kosketus #kosketusnapit { display: block; }
+    /* Kenttäpajassa (paja.js) ohjausnapit ovat piilossa, etteivät ne ole palikoiden tiellä */
+    body.kosketus.paja #kosketusnapit { display: none; }
 
     /* Nappien koot lasketaan ruudun koosta, joten ne ovat jokaisessa
        puhelimessa yhtä isoja suhteessa ruutuun.
@@ -182,8 +190,12 @@
   <script src="liaanit.js"></script>
   <script src="ruuti.js"></script>
   <script src="vaikeatkentat.js"></script>
+  <script src="varjo.js"></script>
+  <script src="aarteet.js"></script>
   <script src="peli.js"></script>
   <script src="kartta.js"></script>
+  <script src="omatkentat.js"></script>
+  <script src="paja.js"></script>
   <script src="tehosteet.js"></script>
   <script src="valmiskuvat.js"></script>
   <script src="kosketus.js"></script>
