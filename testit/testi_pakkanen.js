@@ -190,7 +190,7 @@ tarkista(!virhe, "pitkä pomotaistelu pyörii ja piirtyy (1P ja 2P) " + (virhe ?
 const uusia = new Set();
 for (let n = 11; n <= 16; n++) { T.ev(`aloitaKentta(${n})`); T.kentta.viholliset.forEach((x) => uusia.add(x.tyyppi)); }
 tarkista(["pingviini", "lumiukkeli", "jaahauki", "pollo"].every((t) => uusia.has(t)), "kaikki neljä uutta vihua ovat kentissä");
-tarkista(T.ev("MAAILMAT.length") === 3 && T.ev("MAAILMAT[2].loppu") === T.KENTAT.length - 1, "maailmoja on kolme ja Pakkassaari on viimeinen");
+tarkista(T.ev("MAAILMAT.length") >= 3 && T.ev("MAAILMAT[2].nimi") === "Pakkassaari" && T.ev("MAAILMAT[2].loppu") === 16, "Pakkassaari on kolmas maailma (kentät 12-17)");
 tarkista(T.ev("KAPPALEET.length") === T.KENTAT.length, "jokaisella kentällä on oma kappale");
 tarkista(T.ev("KARTTA.length") >= T.KENTAT.length, "jokaisella kentällä on paikka kartalla");
 // Jäälohkon sisällä olevat kolikot ja sydämet ovat oikeasti lohkon sisällä

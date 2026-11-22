@@ -219,6 +219,74 @@ const KAPPALEET = [
     basso: "E2 E2 . E2 E2 . B2 . | E2 E2 . E2 D#2 . B1 . | E2 E2 . E2 E2 . G2 . | A2 A2 . A2 B2 . B1 . ",
     rummut: "k h s h k k s k ",
   },
+  // ---------- MAAILMA 4: AAVIKKOSAARI ----------
+  // Aavikon kappaleissa on "itämainen" sävelasteikko: siinä on yksi iso loikka (esim. Bb -> C#).
+  {
+    // Kenttä 18: kävelyä dyyneillä
+    nimi: "Dyynit",
+    tempo: 126,
+    aalto: "square",
+    melodia:
+      "A4 . C#5 D5 E5 - D5 C#5 | Bb4 - A4 . A4 Bb4 C#5 . | D5 . E5 F5 E5 - D5 C#5 | D5 - - . A4 - - . |" +
+      "A5 . G5 F5 E5 - F5 E5 | D5 C#5 Bb4 . A4 - C#5 . | D5 E5 F5 E5 D5 C#5 Bb4 C#5 | A4 - - - A4 . . . ",
+    basso: "A2 . A2 E3 A2 . E3 . | Bb2 . Bb2 F3 Bb2 . F3 . | D3 . D3 A2 D3 . A2 . | A2 . E3 . A2 . E2 . ",
+    rummut: "k . h . s . h h ",
+  },
+  {
+    // Kenttä 19: pomppiva ja piikikäs
+    nimi: "Kaktuslaakso",
+    tempo: 140,
+    aalto: "square",
+    melodia:
+      "E5 . G#5 . A5 G#5 F5 E5 | F5 . E5 . D5 . E5 . | E5 . G#5 . B5 A5 G#5 F5 | E5 - - . B4 . E5 . |" +
+      "C6 . B5 . A5 G#5 F5 . | A5 . G#5 . F5 E5 D5 . | E5 F5 G#5 A5 B5 A5 G#5 F5 | E5 - . E5 E5 - - . ",
+    basso: "E2 . B2 . E2 . B2 . | F2 . C3 . F2 . C3 . | E2 . B2 . E2 . G#2 . | A2 . F2 . E2 . B1 . ",
+    rummut: "k h s h k k s h ",
+  },
+  {
+    // Kenttä 20: hidas ja väreilevä, kuin kangastus
+    nimi: "Kangastusten kanjoni",
+    tempo: 104,
+    aalto: "triangle",
+    melodia:
+      "D5 - F#5 - A5 - - G5 | F#5 - Eb5 - D5 - - . | G5 - Bb5 - A5 - F#5 - | G5 - - - Eb5 - - . |" +
+      "A5 - C6 - Bb5 - A5 G5 | F#5 - - Eb5 D5 - - . | Eb5 - G5 - F#5 - Eb5 - | D5 - - - - - . . ",
+    basso: "D2 - - A2 D3 - A2 - | Eb2 - - Bb2 Eb3 - Bb2 - | G2 - - D3 G3 - D3 - | D2 - - A2 D3 - - - ",
+    rummut: ". . h . . . h h ",
+  },
+  {
+    // Kenttä 21: salaperäinen pyramidi
+    nimi: "Pyramidin uumenissa",
+    tempo: 96,
+    aalto: "triangle",
+    melodia:
+      "C5 - - Eb5 D5 - - . | F#5 - - G5 Eb5 - - . | C5 - Eb5 - G5 - Ab5 - | G5 - - - F#5 - - . |" +
+      "C6 - - B5 Ab5 - - G5 | F#5 - Eb5 - D5 - - . | Eb5 D5 C5 - B4 - D5 - | C5 - - - - - . . ",
+    basso: "C2 . . C2 G2 . . . | C2 . . C2 Ab2 . . . | C2 . . C2 G2 . . . | Ab2 . . G2 . . G2 . ",
+    rummut: "k . . . s . . h ",
+  },
+  {
+    // Kenttä 22: kiire varjoon!
+    nimi: "Paahdeharju",
+    tempo: 150,
+    aalto: "square",
+    melodia:
+      "A5 A5 . A5 Bb5 . A5 . | G5 F5 E5 . C#5 . E5 . | D5 D5 . D5 E5 . F5 . | E5 - - . C#5 - A4 . |" +
+      "A5 A5 . A5 C#6 . Bb5 . | A5 G5 F5 . E5 . D5 . | C#5 D5 E5 F5 E5 D5 C#5 Bb4 | A4 - - . A4 . A4 . ",
+    basso: "A2 A2 . A2 A2 . E3 . | A2 A2 . A2 G2 . G2 . | D3 D3 . D3 D3 . A2 . | E2 E2 . E2 E2 . E3 . ",
+    rummut: "k h s h k h s s ",
+  },
+  {
+    // Kenttä 23: Hiekkamadon pomotaistelu
+    nimi: "Hiekkamadon pesä",
+    tempo: 160,
+    aalto: "sawtooth",
+    melodia:
+      "E5 . E5 F5 E5 . D5 . | E5 . G#5 . F5 - E5 . | E5 . E5 F5 G#5 . A5 . | B5 - A5 G#5 F5 - E5 . |" +
+      "B5 . B5 C6 B5 . A5 . | G#5 . F5 . E5 - D5 . | E5 F5 G#5 A5 B5 C6 B5 A5 | G#5 - F5 - E5 - - . ",
+    basso: "E2 E2 . E2 F2 . E2 . | E2 E2 . E2 D2 . E2 . | E2 E2 . E2 F2 . A2 . | B2 B2 . B2 B1 . B1 . ",
+    rummut: "k k s h k k s k ",
+  },
 ];
 
 // Kuinka kovaa kukin soitin soi (äänitehosteiden pitää kuulua musiikin päältä)

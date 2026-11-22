@@ -27,7 +27,9 @@ const edistys = () => { const k = T.kentta; return k.murtuvat.filter((m) => m.ei
 const tulvanVaihe = () => (T.kentta.tulva ? Math.floor(((T.kentta.tulva.aika % T.kentta.tulva.jakso) / T.kentta.tulva.jakso) * 5) : 0);
 // Onko lähellä liikkuva taso? Silloin sen vaihe (4 osaa) kuuluu tilaan, jotta botti osaa odottaa tasoa.
 const kyyti = () => { const p = T.pelaaja1; const a = T.kentta.liikkuvatTasot.find((t) => Math.abs(t.x + t.leveys / 2 - p.x) < 220); return a ? 1 + Math.floor((((a.aika * a.nopeus) / (Math.PI * 2)) % 1) * 4) : 0; };
-const avain = () => { const p = T.pelaaja1; return [kyyti(), Math.floor(p.x / 32), Math.floor(p.y / 32), pomoE(), jaahtynyt(), edistys(), tulvanVaihe(), p.liaani >= 0 ? 1 : 0, process.env.VAIKEA ? Math.floor(p.tuli / 35) : 0].join(","); };
+// Hiekkamato: missä vaiheessa se on ja missä kohtaa areenaa (jotta botti oppii väistämään ja osumaan)
+const mato = () => { const m = T.kentta.pomo; return m && m.tyyppi === "mato" && m.herannyt ? m.tila + Math.floor(m.x / 120) : ""; };
+const avain = () => { const p = T.pelaaja1; return [mato(), kyyti(), Math.floor(p.x / 32), Math.floor(p.y / 32), pomoE(), jaahtynyt(), edistys(), tulvanVaihe(), p.liaani >= 0 ? 1 : 0, process.env.VAIKEA ? Math.floor(p.tuli / 35) : 0].join(","); };
 const pisteet = () => T.pelaaja1.x + edistys() * 150 + (T.kentta.pomo ? (T.kentta.pomo.maxElamat - pomoE()) * 2000 : 0);
 const solut = new Map();
 solut.set(avain(), { tila: T.SNAP(), aika: 0, kayty: 0, x: T.pelaaja1.x, piste: pisteet() });

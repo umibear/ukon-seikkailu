@@ -5,6 +5,7 @@
 //   menetäkään elämää, vaan putoaa salaiseen AARREKAMMIOON!
 //   - Kammiossa odottaa aarre (timantti) ja sydän. Ulos pääsee oikean reunan aukosta.
 //   - Pieni vihje: salakuopan suulla välähtää silloin tällöin tähti.
+//   - Aavikolla salakuoppa on juoksuhiekkaa: siihen pitää upota kokonaan!
 //   - Kun kaikkien kenttien aarteet on löydetty, Ukosta tulee KULTAINEN.
 //   Kokeile itse: siirrä salakuoppa toiseen kuoppaan muuttamalla lukuja listassa SALAKUOPAT.
 // ==========================================
@@ -40,6 +41,13 @@ const SALAKUOPAT = [
   { x: 1300, leveys: 180 },
   { x: 2500, leveys: 180 },
   { x: 830, leveys: 60 },
+  // Maailma 4: Aavikkosaari (juoksuhiekassa! syvyys = kuinka syvälle pitää upota)
+  { x: 2472, leveys: 80, syvyys: 452 },
+  { x: 952, leveys: 80, syvyys: 452 },
+  { x: 2300, leveys: 78, syvyys: 452, ulos: { x: 2395, y: 350 } }, // kangastussillan alla
+  { x: 2932, leveys: 66, syvyys: 452 },
+  { x: 3440, leveys: 72, syvyys: 452 },
+  { x: 580, leveys: 70, syvyys: 452 },
 ];
 
 // Kammion värit maailman mukaan: tausta, takaseinän kivet ja seinässä tuikkivat kiteet
@@ -47,6 +55,7 @@ const KAMMION_VARIT = [
   { tausta: "#241a12", kivi: "#30231a", kide: "#7be36f" }, // Vihreä saari: multaluola
   { tausta: "#260f0b", kivi: "#3a1711", kide: "#ff9a3c" }, // Tulivuorisaari: laavaluola
   { tausta: "#0e1d30", kivi: "#16304a", kide: "#9fe8ff" }, // Pakkassaari: jääluola
+  { tausta: "#2b1e0c", kivi: "#3d2b12", kide: "#ffd23c" }, // Aavikkosaari: hautakammio
 ];
 
 let aarteet = []; // aarteet[kentän numero] = true, kun sen aarre on löydetty (tallennetaan, peli.js)
@@ -77,7 +86,13 @@ function lisaaAarre(k, numero) {
     }
     ulos = { x: ulosX, y: lattia - 40 };
   }
-  k.salakuoppa = { x: kuoppa.x, leveys: kuoppa.leveys, ulosX: ulos.x, ulosY: ulos.y };
+  k.salakuoppa = {
+    x: kuoppa.x,
+    leveys: kuoppa.leveys,
+    syvyys: kuoppa.syvyys || KUOPAN_SYVYYS, // kun ukon jalat ovat tätä alempana, se on pudonnut
+    ulosX: ulos.x,
+    ulosY: ulos.y,
+  };
 
   // Kammio on huone: lattia, katto ja seinät. Oikeassa seinässä on alhaalla
   // aukko, josta pääsee ulos. Aarteen saa, kun vain kävelee sen läpi.
@@ -100,7 +115,7 @@ function putosiSalakuoppaan() {
   if (!s || kammiossa) return false;
   const keski = pelaaja.x + pelaaja.leveys / 2;
   if (keski < s.x || keski > s.x + s.leveys) return false; // ei salaisessa kohdassa
-  if (pelaaja.y + pelaaja.korkeus < KUOPAN_SYVYYS) return false; // ei vielä tarpeeksi syvällä
+  if (pelaaja.y + pelaaja.korkeus < s.syvyys) return false; // ei vielä tarpeeksi syvällä
 
   kammiossa = true;
   kammioAika = 0;
@@ -276,7 +291,8 @@ function piirraAarre(aika) {
     if (kohta < 500 && naytolla(s.x, s.leveys)) {
       const kerta = Math.floor(aika / VIHJEEN_VALI);
       const x = s.x + s.leveys * (0.25 + 0.5 * ((kerta * 0.618) % 1));
-      const y = 420 + (kerta % 3) * 5;
+      // Juoksuhiekassa tähti välähtää hiekan pinnalla, muuten vähän kuopan sisällä
+      const y = s.syvyys > KUOPAN_SYVYYS ? 403 : 420 + (kerta % 3) * 5;
       piirraValahdys(x, y, Math.sin((kohta / 500) * Math.PI) * 8);
     }
     return;

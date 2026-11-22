@@ -282,6 +282,7 @@ function piirraPimeys(aika) {
   tulivuoriValot(valo); // laava ja liekit valaisevat (tulivuori.js)
   ruutiValot(valo); // palavat langat ja räjähdykset (ruuti.js)
   pakkasValot(valo); // nuotiot ja jää (pakkanen.js)
+  aavikkoValot(valo); // soihdut, muumiot ja Hiekkamato (aavikko.js)
   if (kentta.valitallennus.aktiivinen) {
     valo(kentta.valitallennus.x + 10, kentta.valitallennus.y + 20, 90);
   }

@@ -290,6 +290,7 @@ const AMMUSTEN_TIEDOT = {
   kapy: { varit: ["#7a4a1e", "#b07a3a"], teksti: "KÄPY!" },
   hiili: { varit: ["#ff7b00", "#ffd23c"], teksti: "KUUMA!" },
   jaa: { varit: ["#8fd3f0", "white"], teksti: "JÄÄPALA!" },
+  hiekka: { varit: ["#d9ab63", "#f3d9a0"], teksti: "HIEKKAA!" }, // Hiekkamato sylkee näitä (hiekkamato.js)
 };
 
 function piirraAmmus(l) {

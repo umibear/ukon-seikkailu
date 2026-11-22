@@ -168,6 +168,7 @@ function elavatPelaajat() {
 //   "peli"         = pelataan
 //   "kenttaValmis" = kenttä läpäisty, odotetaan välilyöntiä
 //   "voitto"       = kaikki kentät läpäisty
+//   "kohtaus"      = tarinan kuvakohtaus (tarina.js)
 //   "havio"        = elämät loppuivat
 let tila = "alku";
 
@@ -241,6 +242,12 @@ addEventListener("keydown", (e) => {
     const tilaEnnen = tila; // muistetaan, ettei kentän aloitus Enterillä ammu heti
     // Kenttäpajassa on omat näppäimensä (paja.js)
     if (pajaNappain(e.code)) {
+      e.preventDefault();
+      return;
+    }
+    // Tarinan kohtauksessa napit vievät tarinaa eteenpäin (tarina.js)
+    if (tila === "kohtaus") {
+      kohtauksenNappi(e.code);
       e.preventDefault();
       return;
     }
@@ -373,6 +380,7 @@ function nollaaPeli() {
   parhaatKolikot = [];
   vaikeatLapaisty = [];
   aarteet = []; // löydetyt aarteet (aarteet.js)
+  nahdytKohtaukset = {}; // nähdyt tarinan kohtaukset (tarina.js)
   avattu = 0; // vain ensimmäinen kenttä on auki
   kartanKohta = 0;
   uusiKentta = -1;
@@ -414,6 +422,8 @@ function seuraavaKentta() {
     avaaPaja(); // omasta kentästä palataan Omalle saarelle (paja.js)
     return;
   }
+  // Pomon jälkeen näytetään ensin tarinan kohtaus (tarina.js)
+  if (kohtausPomonJalkeen(kenttaNumero)) return;
   if (kenttaNumero === KENTAT.length - 1) {
     // Viimeinen kenttä läpäisty: koko peli voitettu!
     tila = "voitto";
@@ -543,6 +553,7 @@ function tallennaPeli() {
     parhaatKolikot: parhaatKolikot,
     vaikeatLapaisty: vaikeatLapaisty,
     aarteet: aarteet,
+    tarinat: nahdytKohtaukset,
     elamat: [pelaaja1.elamat, pelaaja2.elamat],
   };
   try {
@@ -564,6 +575,7 @@ function jatkaPelia() {
   parhaatKolikot = korjaa(t.parhaatKolikot);
   vaikeatLapaisty = (t.vaikeatLapaisty || []).map((lapaisty) => Boolean(lapaisty));
   aarteet = (t.aarteet || []).map((loydetty) => Boolean(loydetty));
+  nahdytKohtaukset = Object.assign({}, t.tarinat);
   // Onko peliin tullut uusia kenttiä tallennuksen jälkeen? Jos viimeinen
   // avattu kenttä on jo läpäisty, seuraava kenttä aukeaa.
   if (avattu < KENTAT.length - 1 && parhaatPisteet[avattu] !== undefined) {
@@ -644,6 +656,7 @@ function valitseRivi(id) {
   if (id === "jatka") {
     testiPeli = false;
     jatkaPelia();
+    naytaAlkukohtaus(); // jos tarinan alkua ei ole vielä nähty (tarina.js)
   } else if (id === "uusi") {
     if (tallennus && !uusiVahvistus) {
       uusiVahvistus = true; // pitää painaa vielä kerran, ettei tallennus häviä vahingossa
@@ -653,6 +666,7 @@ function valitseRivi(id) {
     uusiVahvistus = false;
     testiPeli = false;
     aloitaPeli(); // vanha tallennus korvautuu uudella pelillä
+    naytaAlkukohtaus(); // tarina alkaa (tarina.js)
   } else if (id === "pelaajat") {
     kaksinpeli = !kaksinpeli;
     aanet.laskuri();
@@ -852,6 +866,7 @@ function valmisteleKentta(k) {
     }
     if (valmisteleTulivihu(v)) continue; // kekäle, laavaetana, salamanteri (tulivihut.js)
     if (valmistelePakkasvihu(v)) continue; // pingviini, lumiukkeli, hauki, pöllö (pakkasvihut.js)
+    if (valmisteleAavikkovihu(v)) continue; // kaktus, skorpioni, pyörre, muumio (aavikkovihut.js)
     if (v.tyyppi === "tippuja") {
       // Hämähäkki roikkuu langan päässä kohdassa x, y ja tippuu lattialle asti
       v.leveys = 26;
@@ -927,6 +942,8 @@ function valmisteleKentta(k) {
     valmisteleMagma(k.pomo); // tulivuori.js
   } else if (k.pomo && k.pomo.tyyppi === "pakkas") {
     valmistelePakkasukko(k.pomo); // pakkasukko.js
+  } else if (k.pomo && k.pomo.tyyppi === "mato") {
+    valmisteleMato(k.pomo); // hiekkamato.js
   } else if (k.pomo) {
     const p = k.pomo;
     p.nimi = "ISÄUKKO";
@@ -1007,6 +1024,7 @@ function valmisteleKentta(k) {
 
   valmisteleTulivuori(k); // laava, liekit ja tykit (tulivuori.js)
   valmistelePakkanen(k); // jää, nuotiot, jääpuikot, vesi ja tuuli (pakkanen.js)
+  valmisteleAavikko(k); // juoksuhiekka, palmut, pilvet ja kangastukset (aavikko.js)
 
   valmisteleLiaanit(k); // liaanit, joissa heilutaan (liaanit.js)
   valmisteleRuuti(k); // ruutitynnyrit, sytytyslangat ja laavatulva (ruuti.js)
@@ -1045,6 +1063,7 @@ function nollaaLiike(pl) {
   pl.liaani = -1;
   pl.liaaniTauko = 0;
   pl.kohmeessa = false;
+  nollaaAavikko(pl); // paahde ja juoksuhiekka (aavikko.js)
   pl.jaatyminen = 0;
 }
 
@@ -1107,6 +1126,9 @@ function menetaElama() {
   } else if (pomo && pomo.elossa && pomo.tyyppi === "pakkas") {
     avaaPortti();
     nollaaPakkasukko(pomo); // pakkasukko.js
+  } else if (pomo && pomo.elossa && pomo.tyyppi === "mato") {
+    avaaPortti();
+    nollaaMato(pomo); // hiekkamato.js
   } else if (pomo && pomo.elossa) {
     avaaPortti(); // pelaaja aloittaa areenan ulkopuolelta
     pomo.herannyt = false;
@@ -1251,6 +1273,7 @@ function tarkistaVihuOsuma(v) {
   }
   if (TULIVIHUT.includes(v.tyyppi)) return tulivihuOsuu(v); // tulivihut.js
   if (PAKKASVIHUT.includes(v.tyyppi)) return pakkasvihuOsuu(v); // pakkasvihut.js
+  if (AAVIKKOVIHUT.includes(v.tyyppi)) return aavikkovihuOsuu(v); // aavikkovihut.js
 
   // Tuleeko pelaaja ylhäältä? Silloin pelaaja putoaa (vy > 0) ja sen
   // jalat olivat edellisellä hetkellä vihun pään yläpuolella.
@@ -1324,6 +1347,7 @@ function osuPomoon(vahinko) {
   let murut = ["#8b4a1c", "#6b3a14", "#a0522d"];
   if (p.tyyppi === "magma") murut = ["#555", "#888", "#ff7b00"];
   if (p.tyyppi === "pakkas") murut = ["white", "#cfe1f0", "#8fd3f0"];
+  if (p.tyyppi === "mato") murut = ["#c9824a", "#e8b77a", "#f3d9a0"];
   lisaaHiukkasia(p.x + p.leveys / 2, p.y + 50, 12, murut, 4);
 
   if (p.elamat <= 0) {
@@ -1348,6 +1372,7 @@ function osuPomoon(vahinko) {
     p.geysirit = [];
     p.tulikuulat = [];
     if (p.tyyppi === "pakkas") siivoaPakkasukko(p); // pakkasukko.js
+    if (p.tyyppi === "mato") siivoaMato(p); // hiekkamato.js
     // Maali ilmestyy!
     const m = kentta.maali;
     lisaaHiukkasia(m.x + 10, m.y + 20, 30, ["gold", "white"], 5);
@@ -1399,6 +1424,8 @@ function paivitaPomo(dt) {
   if (p.tyyppi === "magma") return paivitaMagma(p, dt, elavat);
   // Samoin Pakkasukolla (pakkasukko.js)
   if (p.tyyppi === "pakkas") return paivitaPakkasukko(p, dt, elavat);
+  // Ja Hiekkamadolla (hiekkamato.js)
+  if (p.tyyppi === "mato") return paivitaMato(p, dt, elavat);
 
   // Kun elämiä on yksi kolmasosa jäljellä, Isäukko suuttuu ja on nopeampi
   const vihainen = pomoVihainen(p); // vaikealla jo aikaisemmin (vaikea.js)
@@ -1838,6 +1865,7 @@ function paivita(dt) {
   }
 
   if (tila === "kartta") paivitaKartta(dt);
+  if (tila === "kohtaus") paivitaKohtaus(dt); // tarina.js
 
   // Pelaaja ja vihut liikkuvat vain, kun pelataan
   if (tila !== "peli") return;
@@ -1909,6 +1937,8 @@ function paivita(dt) {
       paivitaTulivihu(v, dt); // tulivihut.js
     } else if (PAKKASVIHUT.includes(v.tyyppi)) {
       paivitaPakkasvihu(v, dt); // pakkasvihut.js
+    } else if (AAVIKKOVIHUT.includes(v.tyyppi)) {
+      paivitaAavikkovihu(v, dt); // aavikkovihut.js
     } else if (vaikea && v.tyyppi === "vihu" && vihuRyntaa(v, dt)) {
       // Vaikealla vihu ryntää ukkoa päin (vaikea.js)
     } else if (vaikea && v.tyyppi === "piikkis" && piikkisAmpuu(v, dt)) {
@@ -1964,6 +1994,9 @@ function paivita(dt) {
 
   // 8b. Nuotiot, jääpuikot, lumipallot, vesi ja tuuli (pakkanen.js)
   if (paivitaPakkanen(dt)) return;
+
+  // 8b. Pilvien varjot, kangastukset ja juoksuhiekka (aavikko.js)
+  if (paivitaAavikko(dt)) return;
 
   // 8c. Pomo
   if (paivitaPomo(dt)) return;
@@ -2029,6 +2062,9 @@ function paivitaTulipallot(dt) {
       } else if (pomo.tyyppi === "pakkas") {
         // Tuli sulattaa Pakkasukon jääpanssaria (pakkasukko.js)
         if (porttiKiinni()) sulataPakkasukkoa(pomo);
+      } else if (pomo.tyyppi === "mato") {
+        // Hiekkamatoon tuli tehoaa vain päähän (hiekkamato.js)
+        matoonOsuiTuli(pomo, t);
       } else if (!pomo.portti || porttiKiinni()) osuPomoon(VAHINKO_TULIPALLO);
       t.elossa = false;
       lisaaHiukkasia(t.x + 8, t.y + 8, 8, ["orange", "#ff3c00"], 3);
@@ -2141,6 +2177,7 @@ function keraaAsiat() {
 function paivitaPelaaja(dt) {
   // Tulimittari täyttyy hitaasti. Vaikealla Pakkassaarella mittari on ukon
   // lämpö: se ei täyty itsestään vaan hupenee! (pakkanen.js)
+  if (paahdePolttaa(dt)) return; // aavikon aurinko poltti (vain vaikealla, aavikko.js)
   if (pakkanenPuree()) {
     if (palele(pelaaja, dt)) return; // ukko jäätyi ja menetti elämän
   } else {
@@ -2180,13 +2217,17 @@ function paivitaPelaaja(dt) {
 
   // Jäällä ukko liukuu: vauhti muuttuu vain vähän kerrallaan (pakkanen.js)
   pelaaja.vx = liukuJaalla(pelaaja, pelaaja.vx, dt);
+  // Juoksuhiekassa ja pyörryksissä ukko on hidas (aavikko.js)
+  pelaaja.vx = aavikonVauhti(pelaaja.vx);
 
   const hyppyNappi = !pelaaja.odotaNostoa && hyppyNappiPohjassa();
   const hyppyPainettiin = hyppyNappi && !pelaaja.hyppyNappiEnnen; // painettiin juuri nyt
   pelaaja.hyppyNappiEnnen = hyppyNappi;
   pelaaja.seina = pelaaja.maassa ? 0 : seinaVieressa();
 
-  if (hyppyNappi && pelaaja.maassa) {
+  if (ponnistaHiekasta(hyppyNappi, hyppyPainettiin)) {
+    // Juoksuhiekasta hypätään omalla tavallaan (aavikko.js)
+  } else if (hyppyNappi && pelaaja.maassa) {
     pelaaja.vy = -HYPPYVOIMA;
     pelaaja.maassa = false;
     pelaaja.hyppaa = true;
@@ -2214,6 +2255,7 @@ function paivitaPelaaja(dt) {
   // 2. Painovoima vetää alaspäin
   pelaaja.vy += PAINOVOIMA * dt;
   if (pelaaja.vy > MAX_PUTOAMIS) pelaaja.vy = MAX_PUTOAMIS;
+  uppoaHiekkaan(); // juoksuhiekassa ei pudota vaan upotaan hitaasti (aavikko.js)
 
   // Seinäliuku: kun ukko putoaa ja painaa seinää kohti, se liukuu hitaasti alas
   pelaaja.liukuu =
@@ -2832,6 +2874,10 @@ function piirraViholliset(aika) {
       piirraPakkasvihu(v, aika); // pakkasvihut.js
       continue;
     }
+    if (AAVIKKOVIHUT.includes(v.tyyppi)) {
+      piirraAavikkovihu(v, aika); // aavikkovihut.js
+      continue;
+    }
     if (v.tyyppi === "tippuja") {
       piirraTippuja(v, aika);
       continue;
@@ -2910,6 +2956,7 @@ function piirraPomo(aika) {
   if (!p) return;
   if (p.tyyppi === "magma") return piirraMagma(p, aika); // tulivuori.js
   if (p.tyyppi === "pakkas") return piirraPakkasukko(p, aika); // pakkasukko.js
+  if (p.tyyppi === "mato") return piirraMato(p, aika); // hiekkamato.js
   piirraKivetJaAallot(p, aika);
   if (!p.elossa && p.kuolinAika <= 0) return;
 
@@ -3071,6 +3118,7 @@ function piirraMaailma(aika) {
   ctx.save();
   ctx.translate(-Math.round(kameraX), 0);
 
+  piirraAavikkoTausta(aika); // varjot, palmut ja pilvet (aavikko.js)
   piirraLaavat(aika); // tulivuori.js
   piirraVedet(aika); // pakkanen.js
   for (const t of kentta.tasot) {
@@ -3122,6 +3170,7 @@ function piirraMaailma(aika) {
   }
 
   piirraAarre(aika); // salakuopan vihje ja aarrekammion aarre (aarteet.js)
+  piirraAavikko(aika); // kangastukset (aavikko.js)
   piirraPakkanen(aika); // jäälohkot, nuotiot ja jääpuikot (pakkanen.js)
   piirraLippu(kentta.valitallennus, aika, !kentta.valitallennus.aktiivinen);
   if (maaliAuki()) piirraLippu(kentta.maali, aika, false);
@@ -3161,6 +3210,7 @@ function piirraMaailma(aika) {
   piirraVarjo(aika); // parhaan ajon varjo juoksee mukana (varjo.js)
   if (tila !== "alku") piirraPelaajat(aika);
   piirraPakkanenEtuala(aika); // lumipallot ja tuulen viirut (pakkanen.js)
+  piirraAavikkoEtuala(aika); // juoksuhiekka ja paahdemittari (aavikko.js)
   piirraTulva(aika); // nouseva laava peittää kaiken alleen (ruuti.js)
   for (const l of kentta.salaisetLuolat) if (naytolla(l.x, l.leveys)) piirraLuola(l);
   piirraHiukkaset();
@@ -3493,6 +3543,8 @@ function piirra(aika) {
     else piirraOhjeet();
   } else if (tila === "kartta") {
     piirraKartta(aika);
+  } else if (tila === "kohtaus") {
+    piirraKohtaus(aika); // tarinan kuva ja teksti (tarina.js)
   } else if (tila === "paja") {
     piirraPaja(aika); // Oma saari (paja.js)
   } else if (tila === "muokkaus") {

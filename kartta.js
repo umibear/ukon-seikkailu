@@ -17,13 +17,14 @@ let parhaatPisteet = []; // paras tulos jokaisesta kentästä
 let parhaatKolikot = []; // eniten kerätyt kolikot jokaisesta kentästä
 
 // Pomojen nimet kartan tietolaatikkoon (pomo ilman tyyppiä on Isäukko)
-const POMOJEN_NIMET = { magma: "MAGMAMÖRKÖ", pakkas: "PAKKASUKKO" };
+const POMOJEN_NIMET = { magma: "MAGMAMÖRKÖ", pakkas: "PAKKASUKKO", mato: "HIEKKAMATO" };
 
 // Jokaisella maailmalla on omat värinsä kartalla: meri (ylhäällä ja alhaalla), ranta ja maa
 const KARTAN_VARIT = {
   nurmi: { meriYla: "#2b7bc4", meriAla: "#4fa8e0", ranta: "#f2d98d", maa: "#7cc576" },
   tulivuori: { meriYla: "#2a1b3d", meriAla: "#5a2a3a", ranta: "#6b5a50", maa: "#3d302e" },
   pakkanen: { meriYla: "#173a66", meriAla: "#4f8fc4", ranta: "#bfe3f5", maa: "#f4fbff" },
+  aavikko: { meriYla: "#1f8fb8", meriAla: "#5fd0d8", ranta: "#fff1c4", maa: "#ecc77e" },
 };
 
 // Haetaan kenttien nimet ja värit kerran pelin alussa
@@ -172,6 +173,7 @@ function piirraKartta(aika) {
   const m = nykyinenMaailma();
   const tulivuori = m.tyyli === "tulivuori";
   const pakkanen = m.tyyli === "pakkanen";
+  const aavikko = m.tyyli === "aavikko";
   const varit = KARTAN_VARIT[m.tyyli] || KARTAN_VARIT.nurmi;
 
   // Meri (sama taivaskuva kuin kentissä: piirretään valmiiksi vain kerran)
@@ -193,6 +195,7 @@ function piirraKartta(aika) {
     if (!KENTTIEN_TIEDOT[i].pomo) continue;
     if (tulivuori) piirraTulivuoriKartalla(kentanPaikka(i), aika);
     else if (pakkanen) piirraJaalinnaKartalla(kentanPaikka(i), aika); // pakkasukko.js
+    else if (aavikko) piirraPyramidiKartalla(kentanPaikka(i)); // aavikko.js
     else piirraVuoret(kentanPaikka(i));
   }
 
@@ -202,6 +205,9 @@ function piirraKartta(aika) {
   } else if (pakkanen) {
     piirraJaalammet(); // pakkanen.js
     for (const puu of m.puut) piirraLumikuusi(puu.x, puu.y);
+  } else if (aavikko) {
+    piirraHiekkalammet(aika); // aavikko.js
+    for (const puu of m.puut) piirraPalmuKartalla(puu.x, puu.y);
   } else {
     for (const puu of PUUT) piirraPuu(puu.x, puu.y);
   }
@@ -343,7 +349,9 @@ function piirraKenttaPallo(i, aika) {
   const tiedot = KENTTIEN_TIEDOT[i];
 
   // Pomo nukkuu kenttänsä yläpuolella, kunnes se voitetaan
-  if (tiedot.pomoTyyppi === "pakkas" && !valmis) {
+  if (tiedot.pomoTyyppi === "mato" && !valmis) {
+    piirraMatoKuvake(p.x, p.y - 30, aika); // hiekkamato.js
+  } else if (tiedot.pomoTyyppi === "pakkas" && !valmis) {
     piirraPakkasukkoKuvake(p.x, p.y - 28, aika); // pakkasukko.js
     if (auki) {
       const z = Math.floor(aika / 400) % 3;
@@ -453,6 +461,7 @@ function piirraKartanTekstit(aika) {
   const aarreY = vaikea ? 64 : 42;
   piirraTimantti(13, aarreY, 15, "#5ad1e6", "#d9fbff");
   reunaTeksti(aarteitaLoydetty() + " / " + SALAKUOPAT.length, 34, aarreY + 13, 15, "left", "#9ff5ff");
+  piirraValokivetKartalle(aika); // montako majakan valokiveä on löydetty (tarina.js)
   for (const pl of pelaajat) piirraElamat(pl, (pl.numero - 1) * 40);
 
   if (karttaViestiAika > 0) {

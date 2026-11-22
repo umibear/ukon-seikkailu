@@ -27,7 +27,8 @@ const tarkista = (ehto, teksti) => { if (ehto) { ok++; console.log("✅", teksti
   await odota(1000);
   const paina = (koodi) => arvo(`dispatchEvent(new KeyboardEvent("keydown", { code: "${koodi}" })); dispatchEvent(new KeyboardEvent("keyup", { code: "${koodi}" })); true`);
 
-  await paina("Enter"); // Aloita peli -> kartta
+  await paina("Enter"); // Aloita peli -> tarinan alkukohtaus
+  await paina("Escape"); // ohitetaan kohtaus -> kartta
   await odota(600);
   await paina("Enter"); // kenttä 1 alkaa
   await odota(1500);

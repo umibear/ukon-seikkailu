@@ -65,7 +65,9 @@ const PAKKASVARIT = {
 // Tekee kuvan pikselikartasta. ruudut = lista ruutuja (animaation vaiheet),
 // ja jokainen ruutu on lista rivejä. Piste (.) on läpinäkyvä.
 // Ruudut tulevat kuvaan vierekkäin, niin kuin kuvat-kansion kuvissa.
-function pikselikuva(ruudut) {
+// varit = mistä väritaulusta kirjaimet haetaan (jos puuttuu, käytetään Pakkassaaren värejä)
+function pikselikuva(ruudut, varit) {
+  if (!varit) varit = PAKKASVARIT;
   const leveys = ruudut[0][0].length;
   const korkeus = ruudut[0].length;
   const kuva = document.createElement("canvas");
@@ -75,7 +77,7 @@ function pikselikuva(ruudut) {
   for (let n = 0; n < ruudut.length; n++) {
     for (let y = 0; y < korkeus; y++) {
       for (let x = 0; x < leveys; x++) {
-        const vari = PAKKASVARIT[ruudut[n][y][x]];
+        const vari = varit[ruudut[n][y][x]];
         if (!vari) continue; // piste = ei piirretä mitään
         c.fillStyle = vari;
         c.fillRect(n * leveys + x, y, 1, 1);
@@ -250,6 +252,7 @@ function laattaKuva(ylin, t) {
   if (nimi === "jaa") return ylin ? pakkaskuvat.jaa : pakkaskuvat.jaasisus;
   if (nimi === "lumi") return ylin ? pakkaskuvat.lumi : pakkaskuvat.lumimaa;
   if (nimi === "kivi") return ylin ? tulikuvat.kivi : tulikuvat.kivimulta;
+  if (nimi === "hiekka") return ylin ? aavikkokuvat.hiekka : aavikkokuvat.hiekkamaa; // aavikko.js
   return ylin ? kuvat.maa : kuvat.multa;
 }
 

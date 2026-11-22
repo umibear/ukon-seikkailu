@@ -24,10 +24,10 @@ module.exports = function lataa(muisti) {
     ammu: (pl) => ammu(pl || pelaaja1),
     kaksinpeli: (k) => { kaksinpeli = k; pelaajat = k ? [pelaaja1, pelaaja2] : [pelaaja1]; },
     get kentta(){return kentta}, get tila(){return tila}, ev: (s) => eval(s) };
-  T.SNAP = () => structuredClone({ kentta, p1: { ...pelaaja1 }, p2: { ...pelaaja2 }, tulipallot, kameraX, tila, kentanKolikot, kentanVihut, kentanAika, pisteet, tarina, kaksinpeli });
+  T.SNAP = () => structuredClone({ kentta, p1: { ...pelaaja1 }, p2: { ...pelaaja2 }, tulipallot, kameraX, tila, kentanKolikot, kentanVihut, kentanAika, pisteet, tarina, kaksinpeli, kammiossa, kammioAika });
   T.RESTORE = (s0) => { const s = structuredClone(s0); kentta = s.kentta; Object.assign(pelaaja1, s.p1); Object.assign(pelaaja2, s.p2);
     tulipallot = s.tulipallot; kameraX = s.kameraX; tila = s.tila; kentanKolikot = s.kentanKolikot; kentanVihut = s.kentanVihut; kentanAika = s.kentanAika;
-    pisteet = s.pisteet; tarina = s.tarina; kaksinpeli = s.kaksinpeli; pelaajat = kaksinpeli ? [pelaaja1, pelaaja2] : [pelaaja1]; pelaaja = pelaaja1;
+    pisteet = s.pisteet; tarina = s.tarina; kaksinpeli = s.kaksinpeli; kammiossa = s.kammiossa; kammioAika = s.kammioAika; pelaajat = kaksinpeli ? [pelaaja1, pelaaja2] : [pelaaja1]; pelaaja = pelaaja1;
     hiukkaset = []; tekstit = []; for (const k in napit) delete napit[k]; };`;
   vm.runInContext(koodi, g);
   g.T.ev("aanetPaalla = false"); // testeissä ei ole kaiuttimia

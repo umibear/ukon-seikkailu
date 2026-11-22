@@ -13,6 +13,8 @@ const valittu = () => T.ev("valittuRivi().id");
 tarkista(T.ev("tallennus") === null, "ensimmäisellä kerralla tallennusta ei ole");
 T.piirra(0);
 T.paina("Enter");
+tarkista(T.tila === "kohtaus", "uusi peli alkaa tarinan alkukohtauksella");
+T.paina("Escape"); // ohitetaan kohtaus (tarina.js)
 tarkista(T.tila === "kartta" && T.ev("avattu") === 0, "Enter aloittaa uuden pelin");
 tarkista(data.ukonSeikkailuTallennus !== undefined, "peli tallentuu kartalle tultaessa");
 
@@ -57,6 +59,7 @@ T.piirra(0);
 T.paina("ArrowUp");
 tarkista(valittu() === "jatka" && T.ev("uusiVahvistus") === false, "↑ peruu ja valitsee Jatka peliä");
 T.paina("ArrowDown"); T.paina("Enter"); T.paina("Enter");
+T.paina("Escape"); // uusi peli näyttää alkukohtauksen uudestaan: ohitetaan se
 tarkista(T.tila === "kartta" && T.ev("avattu") === 0, "toinen painallus aloittaa uuden pelin");
 tarkista(JSON.parse(data.ukonSeikkailuTallennus).avattu === 0, "uusi peli korvaa vanhan tallennuksen");
 

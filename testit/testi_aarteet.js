@@ -14,7 +14,9 @@ const kentat = T.ev("KENTAT.length");
 // Pudottaa ukon kohtaan x kuopan suulle ja odottaa, mitä tapahtuu
 const pudota = (x) => {
   p.x = x - 10; p.y = 372; p.vx = 0; p.vy = 0; p.suojaAika = 0;
-  for (let i = 0; i < 40 && !kammiossa() && T.tila === "peli" && p.y > 200; i++) T.paivita(1);
+  // (juoksuhiekkaan upotaan hitaasti, siksi odotetaan pitkään)
+  const elamat = p.elamat;
+  for (let i = 0; i < 220 && !kammiossa() && T.tila === "peli" && p.y > 200 && p.elamat === elamat; i++) T.paivita(1);
 };
 // Kävelee kammion läpi oikealle. Hyppyä ei tarvita: pieninkin pelaaja pääsee ulos.
 const kaveleUlos = () => {

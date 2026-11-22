@@ -206,6 +206,7 @@ tarkista(T.tila === "alku" && valittu() === "paja", "Takaisin palaa alkuvalikkoo
 // Seikkailu toimii yhä tavallisesti
 T.ev("valikonValinta = 0");
 T.paina("Enter");
+T.paina("Escape"); // ohitetaan tarinan alkukohtaus (tarina.js)
 T.paina("Enter");
 tarkista(T.tila === "peli" && T.ev("omaPeli") === null && T.ev("kentta.nimi") === "Vihreät kukkulat", "oman kentän jälkeen seikkailun kenttä 1 alkaa tavallisesti");
 

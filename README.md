@@ -1,12 +1,24 @@
 # Ukon seikkailu 🎮
 
-Tasohyppelypeli, jossa on kolme maailmaa, yhteensä 17 kenttää ja kolme pomoa (Isäukko, Magmamörkö ja Pakkasukko).
+Tasohyppelypeli, jossa on neljä maailmaa, yhteensä 23 kenttää ja neljä pomoa (Isäukko, Magmamörkö, Pakkasukko ja Hiekkamato).
+
+**Tarina.** Ukon kotisaaren majakasta ovat kadonneet neljä valokiveä, eivätkä veneet enää löydä kotiin.
+Jokaisella pomolla on yksi kivi. Tarina kerrotaan lyhyinä kuvakohtauksina pelin alussa, jokaisen pomon
+jälkeen ja lopussa (VÄLILYÖNTI vie eteenpäin, ESC ohittaa). Tekstit ovat tiedoston `tarina.js` alussa: kokeile kirjoittaa oma tarina!
 
 | Maailma | Kentät | Mitä uutta |
 |---|---|---|
 | 1. Vihreä saari | 1–5 | hyppiminen, tulipallot, seinähypyt, pomo Isäukko |
 | 2. Tulivuorisaari | 6–11 | laava, liekkisuihkut, tykit, pomo Magmamörkö |
 | 3. Pakkassaari | 12–17 | liukas jää, sulavat jäälohkot, nuotiot, jääpuikot, hyinen vesi, tuulenpuuskat, pomo Pakkasukko |
+| 4. Aavikkosaari | 18–23 | paahtava aurinko ja varjot, juoksuhiekka, kangastukset, pölypyörteet, pimeä pyramidi, pomo Hiekkamato |
+
+**Aavikkosaari lyhyesti.** Auringossa ukon päällä oleva paahdemittari nousee: lepää välillä palmun,
+tason tai pilven varjossa. **Juoksuhiekkaan** uppoaa hitaasti: pidä hyppy pohjassa, niin ukko hyppii ulos
+(hypyt heikkenevät, joten leveässä hiekassa pitää kulkea kiviä pitkin). **Kangastus** näyttää tasolta mutta
+haihtuu, kun tulet lähelle. Kaktukseen ei saa koskea, skorpioni piileskelee hiekassa, pölypyörre heittää
+ukon korkealle ja muumion voi tuhota vain tulipallolla. Koodi: `aavikko.js`, `aavikkovihut.js`,
+`hiekkamato.js` ja kentät `kentat4.js`.
 
 ## ★ Vaikea taso
 
@@ -19,6 +31,7 @@ Kun kentän pääsee läpi vaikealla, kartalle tulee tähti ★.
 | 1. Vihreä saari | **liaanit**: hyppää liaaniin, heilu ◀ ▶ ja hyppää irti. Varo: tulipallo polttaa liaanin! |
 | 2. Tulivuorisaari | **ruutitynnyrit** ja sytytyslangat (räjäytä seinät, tykit ja vihut) sekä **laavatulva**, joka nousee välillä |
 | 3. Pakkassaari | **pakkanen puree**: tulimittari on ukon lämpö. Se hupenee koko ajan, ja lämpöä saa vain nuotiolta ja hyppäämällä vihujen päälle |
+| 4. Aavikkosaari | **aurinko polttaa**: täysi paahdemittari vie elämän (normaalilla se vain pyörryttää). Juoksuhiekka upottaa nopeammin ja hyppyä pitää näpytellä, ja kaktukset ampuvat piikkejä |
 
 Vihujen temput on lueteltu tiedoston `vaikea.js` alussa, ja kenttien muutokset ovat tiedostossa `vaikeatkentat.js`.
 Kokeile lisätä kenttään oma liaani tai tynnyri!
@@ -26,7 +39,7 @@ Kokeile lisätä kenttään oma liaani tai tynnyri!
 ## 💎 Salakuopat, aarteet ja varjo
 
 **Salakuopat.** Jokaisessa kentässä on yksi kuoppa, joka ei olekaan vaarallinen. Se näyttää aivan
-tavalliselta kuopalta, laavalta tai avannolta, mutta kun siihen putoaa, päätyy salaiseen
+tavalliselta kuopalta, laavalta, avannolta tai juoksuhiekalta, mutta kun siihen putoaa (tai uppoaa), päätyy salaiseen
 **aarrekammioon**! Siellä odottaa timantti (+1000 pistettä) ja sydän. Ulos pääsee kävelemällä oikealle.
 Pieni vihje: salakuopan suulla välähtää silloin tällöin tähti. Löydetyt aarteet näkyvät kartalla,
 ja kun kaikki on löydetty, Ukosta tulee **kultainen**.
@@ -80,8 +93,8 @@ Peli on tehty tavallisella JavaScriptillä ilman kirjastoja. Kuvat on piirretty 
 Jokaisella kentällä on oma kappale. Nuotit ovat tiedostossa `musiikki.js`, ja niitä voi muokata itse.
 Musiikin saa pois taukovalikosta (Esc / ☰).
 
-Pakkassaaren kuvat on piirretty suoraan koodiin kirjaimilla (yksi kirjain = yksi pikseli):
-katso `pakkanen.js` ja `pakkasvihut.js` ja kokeile muuttaa niitä!
+Pakkassaaren ja Aavikkosaaren kuvat on piirretty suoraan koodiin kirjaimilla (yksi kirjain = yksi pikseli):
+katso `pakkanen.js`, `pakkasvihut.js`, `aavikko.js` ja `aavikkovihut.js` ja kokeile muuttaa niitä!
 
 Hitaalla kännykällä peli siirtyy itse **kevyeen tilaan** (vähemmän hehkuja ja lumihiutaleita).
 Sen saa päälle myös lisäämällä osoitteen loppuun `?kevyt`.
